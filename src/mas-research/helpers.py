@@ -8,7 +8,7 @@ from utils.message_serializer import serialize_message
 
 ## Get one question and answer from the BrowseComp test set. 
 ## Output: { "question": ..., "answer": ... }
-def get_one_browsecomp_question_answer(idx=0, print_question=False, filepath="browse_comp_test.csv"):
+def get_one_browsecomp_question_answer(idx=0, print_question=False, filepath="data/browse_comp_test.csv"):
 
     bc = pd.read_csv(filepath).head()
 

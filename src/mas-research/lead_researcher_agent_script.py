@@ -21,7 +21,7 @@ model = sonnet_45
 dummy_system_prompt = """
 You are a lazy professional researcher. Your goal is to find the answer by delegating tasks to your subagents as much as possible. Use the 'researcher' subagent.
 """
-dummy_question = "Who is leading the race in the NYC mayoral election in 2025? Use the researcher subagent to find out."
+dummy_question = "Who won the NYC mayoral election in 2025? Use the researcher subagent to find out."
 dummy_answer = "Zohran Mamdani"
 dummy_tools = ["Read", "WebSearch"]
 
@@ -59,7 +59,7 @@ tools = ["WebSearch", "Read", "Task", "Bash"] ## , "submit_final_report", "retur
 
 def save_result(result: dict, filecode: str = "browsecomp"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"search_results/{filecode}_result_{timestamp}.json"
+    filename = f"{filecode}_result_{timestamp}.json"
     with open(filename, "w") as f:
         json.dump(result, f, indent=2)
     with open(f"{filecode}_current.json", "w") as f:
@@ -69,7 +69,7 @@ def save_result(result: dict, filecode: str = "browsecomp"):
 
 def export_to_md(result_text: str, filecode: str = "browsecomp"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"search_results/{filecode}_result_{timestamp}.md"
+    filename = f"{filecode}_result_{timestamp}.md"
     with open(filename, "w", encoding="utf-8") as f:
         f.write(result_text.strip() + "\n")
     print(f"Markdown exported to {filename}")
@@ -117,11 +117,11 @@ if __name__ == "__main__":
     #     PROMPT = f.read()
     #     PROMPT = PROMPT.replace("{{.CurrentDate}}", datetime.now().strftime("%B %d, %Y"))
 
-    # question = dummy_question
-    # answer = dummy_answer
+    question = dummy_question
+    answer = dummy_answer
 
+    messages = asyncio.run(run_one_search(model=dummy_model, system_prompt=dummy_system_prompt, subagent_prompt=research_subagent_prompt, question=question, tools=tools, debug_verbose=True))
     # messages = asyncio.run(run_one_search(model=dummy_model, system_prompt=lead_researcher_prompt, subagent_prompt=research_subagent_prompt, question=question, tools=tools, debug_verbose=True))
-    messages = asyncio.run(run_one_search(model=dummy_model, system_prompt=lead_researcher_prompt, subagent_prompt=research_subagent_prompt, question=question, tools=tools, debug_verbose=True))
     visualize_conversation(messages)
 
     serialized = [serialize_message(msg) for msg in messages]
