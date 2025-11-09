@@ -1,7 +1,7 @@
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 from utils.agent_visualizer import print_activity, visualize_conversation
 from utils.message_serializer import save_messages, load_messages, serialize_message
-from claude_agent_sdk import AgentDefinition, ClaudeAgentOptions, ClaudeSDKClient, query
+from claude_agent_sdk import AgentDefinition, ClaudeAgentOptions, ClaudeSDKClient, query # type: ignore
 
 from helpers import get_one_browsecomp_question_answer
 

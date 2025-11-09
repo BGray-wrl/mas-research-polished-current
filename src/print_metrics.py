@@ -1,10 +1,20 @@
 from yaml import warnings
-from helpers import load_messages_from_json
-from utils.message_serializer import serialize_message
-from ../metrics_analyzer import analyze_agent_metrics, print_metrics_report, get_metrics_summary
-
 import json
 from pprint import pprint
+
+import sys
+from pathlib import Path
+
+# Ensure we can import the lead researcher module despite the hyphenated folder name
+THIS_DIR = Path(__file__).resolve().parent
+LR_DIR = THIS_DIR / "mas-research"
+if str(LR_DIR) not in sys.path:
+	sys.path.insert(0, str(LR_DIR))
+
+from helpers import load_messages_from_json # type: ignore
+from utils.message_serializer import serialize_message # type: ignore
+from utils.metrics_analyzer import analyze_agent_metrics, print_metrics_report, get_metrics_summary # type: ignore
+
 
 
 def get_result_from_messages(messages = None, filepath = None):
@@ -32,6 +42,7 @@ def get_result_from_messages(messages = None, filepath = None):
 
 
 filepath = "multiagent_test_current.json"
+filepath = "results/dummy-multiagent/current.json"
 
 
 if __name__ == "__main__":

@@ -3,5 +3,9 @@ misc.py
 __pycache__/
 .venv/
 results/
+
 data/browse_comp_test.csv
 browse_comp_test.csv
+
+misc-testing-archive/
+misc-testing-archive/*
