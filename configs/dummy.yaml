@@ -1,0 +1,19 @@
+# Minimal config to run the lead researcher in dummy mode
+mode: dummy
+
+# Optional overrides (safe defaults are used if omitted)
+tools: ["Read", "WebSearch"]
+debug_verbose: true
+filecode: dummy-multiagent
+
+
+# Path to prompt files
+system_prompt_filepath: "prompts/research_lead_agent.md"
+research_subagent_prompt_filepath: "prompts/research_subagent.md"
+
+model : "claude-haiku-4-5-20251001"
+dummy_system_prompt: "You are a lazy professional researcher. Your goal is to find the answer by delegating tasks to your subagents as much as possible. Use the 'researcher' subagent."
+dummy_researcher_prompt: "You are a diligent subagent researcher. Your goal is to find accurate information to help the lead researcher in accordance with their instructions. Use web search and reading tools as needed."
+dummy_question: "Who won the NYC mayoral election in 2025? Use the researcher subagent to find out."
+dummy_answer: "Zohran Mamdani"
+tools: ["Read", "WebSearch"]

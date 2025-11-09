@@ -1,3 +1,5 @@
 dotenv
 pandas
 claude_agent_sdk
+pyyaml
+openai

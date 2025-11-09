@@ -1,78 +1,19 @@
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 from utils.agent_visualizer import print_activity, visualize_conversation
 from utils.message_serializer import save_messages, load_messages, serialize_message
-from claude_agent_sdk import AgentDefinition, ClaudeAgentOptions, ClaudeSDKClient, create_sdk_mcp_server, query, tool
+from claude_agent_sdk import AgentDefinition, ClaudeAgentOptions, ClaudeSDKClient, create_sdk_mcp_server, query, tool # type: ignore
 
-from helpers import get_one_browsecomp_question_answer, get_result_from_messages
+from helpers import get_one_browsecomp_question_answer, get_result_from_messages, load_prompt, save_result, export_to_md
+from evaluate_answer import evaluate_answer
 
 import asyncio
 import os
 import json
-import pandas as pd
+import pandas as pd # type: ignore
 from datetime import datetime
+from typing import Any, Dict
 
 
-haiku_45 = "claude-haiku-4-5-20251001"
-sonnet_4 = "claude-sonnet-4-20250514"
-sonnet_45 = "claude-sonnet-4-5"
-
-dummy_model = haiku_45
-model = sonnet_45
-dummy_system_prompt = """
-You are a lazy professional researcher. Your goal is to find the answer by delegating tasks to your subagents as much as possible. Use the 'researcher' subagent.
-"""
-dummy_question = "Who won the NYC mayoral election in 2025? Use the researcher subagent to find out."
-dummy_answer = "Zohran Mamdani"
-dummy_tools = ["Read", "WebSearch"]
-
-
-lead_researcher_prompt = ""
-with open("prompts/research_lead_agent.md", "r") as f:
-    lead_researcher_prompt = f.read()
-    lead_researcher_prompt = lead_researcher_prompt.replace("{{.CurrentDate}}", datetime.now().strftime("%B %d, %Y"))
-
-
-research_subagent_prompt = ""
-with open("prompts/research_subagent.md", "r") as f:
-    research_subagent_prompt = f.read()
-    research_subagent_prompt = research_subagent_prompt.replace("{{.CurrentDate}}", datetime.now().strftime("%B %d, %Y"))
-
-
-# @tool("submit_final_report", "Submit final research report", {"report": str})
-# async def submit_final_report(args):
-#     return {"content": [{"type": "text", "text": "Report submitted"}]}
-
-# @tool("return_findings", "Return findings to lead agent", {"findings": str, "notes": str})
-# async def return_findings(args):
-#     return {"content": [{"type": "text", "text": "Findings returned"}]}
-
-# # Create server with both
-# server = create_sdk_mcp_server(
-#     name="research-tools",
-#     version="1.0.0", 
-#     tools=[submit_final_report, return_findings]
-# )
-
-tools = ["WebSearch", "Read", "Task", "Bash"] ## , "submit_final_report", "return_findings"]
-
-
-
-def save_result(result: dict, filecode: str = "browsecomp"):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{filecode}_result_{timestamp}.json"
-    with open(filename, "w") as f:
-        json.dump(result, f, indent=2)
-    with open(f"{filecode}_current.json", "w") as f:
-        json.dump(result, f, indent=2)
-    print(f"✅ Saved result to {filename}")
-    print(f"✅ Also updated {filecode}_current.json")
-
-def export_to_md(result_text: str, filecode: str = "browsecomp"):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{filecode}_result_{timestamp}.md"
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(result_text.strip() + "\n")
-    print(f"Markdown exported to {filename}")
 
 async def run_one_search(model: str, system_prompt: str, subagent_prompt: str, question: str, tools: list, debug_verbose: bool = False):
     messages = []
@@ -105,36 +46,114 @@ async def run_one_search(model: str, system_prompt: str, subagent_prompt: str, q
     return messages
 
 
-if __name__ == "__main__":
 
-    load_dotenv()
+# --- Lightweight config-driven wrapper (keeps __main__ unchanged) ---
+def run_via_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Small convenience wrapper to run the pipeline using a simple config dict.
+    - mode: "dummy" | "default"
+    """
+    mode = (config or {}).get("mode", "dummy")
+    debug_verbose = bool((config or {}).get("debug_verbose", False))
+    filecode = (config or {}).get("filecode", "misc")
 
-    qa = get_one_browsecomp_question_answer(idx=0, print_question=True)
-    question = qa['question']
-    answer = qa['answer']
+    model_to_use = config.get("model", "claude-haiku-4-5-20251001")
+    tools_to_use = config["tools"]
 
-    # with open("prompts/solo_research_agent.md", "r") as f:
-    #     PROMPT = f.read()
-    #     PROMPT = PROMPT.replace("{{.CurrentDate}}", datetime.now().strftime("%B %d, %Y"))
 
-    question = dummy_question
-    answer = dummy_answer
+    if mode == "dummy":
+        system_prompt_to_use = config["dummy_system_prompt"]
+        researcher_subagent_prompt_to_use = config["dummy_researcher_prompt"]
+        question = config["dummy_question"]
+        expected_answer = config["dummy_answer"]
 
-    messages = asyncio.run(run_one_search(model=dummy_model, system_prompt=dummy_system_prompt, subagent_prompt=research_subagent_prompt, question=question, tools=tools, debug_verbose=True))
-    # messages = asyncio.run(run_one_search(model=dummy_model, system_prompt=lead_researcher_prompt, subagent_prompt=research_subagent_prompt, question=question, tools=tools, debug_verbose=True))
+    else:
+        lead_researcher_prompt = load_prompt(config["system_prompt_filepath"]) 
+        researcher_subagent_prompt = load_prompt(config["research_subagent_prompt_filepath"]) 
+
+        system_prompt_to_use = lead_researcher_prompt
+        researcher_subagent_prompt_to_use = researcher_subagent_prompt
+        qa_idx = int(config.get("question_index", 0))
+        qa = get_one_browsecomp_question_answer(
+            idx=qa_idx, print_question=bool(config.get("print_question", False))
+        )
+        # Be robust to potential pandas Series types
+        question = str(qa["question"])  # type: ignore[arg-type]
+        expected_answer = str(qa["answer"])  # type: ignore[arg-type]
+
+
+    messages = asyncio.run(
+        run_one_search(
+            model=model_to_use,
+            system_prompt=system_prompt_to_use,
+            subagent_prompt=researcher_subagent_prompt_to_use,
+            question=question,
+            tools=tools_to_use,
+            debug_verbose=debug_verbose,
+        )
+    )
+
     visualize_conversation(messages)
 
     serialized = [serialize_message(msg) for msg in messages]
     response = get_result_from_messages(messages)
 
+
+    evaluation = evaluate_answer(
+        question=question,
+        correct_answer=expected_answer,
+        response=response if response else "No response received.",
+    )
+
     result = {
         "question": question,
-        "expected_answer": answer,
+        "expected_answer": expected_answer,
         "recieved_answer": response,
-        "messages": serialized
+        "evaluation": evaluation.get("evaluation", ""),
+        "grade": evaluation.get("grade", "no"),
+        "messages": serialized,
     }
 
-    save_result(result, filecode="multiagent_test")
 
-    export_to_md(result_text=response, filecode="multiagent_test") # type: ignore
+
+    save_result(result, filecode=filecode)
+    export_to_md(result_text=response, filecode=filecode) # type: ignore
+
+    return result
+
+
+# OLD CODE BELOW - FOR REFERENCE ONLY
+# - --- IGNORE ---
+
+# # if __name__ == "__main__":
+
+# #     load_dotenv()
+
+# #     qa = get_one_browsecomp_question_answer(idx=0, print_question=True)
+# #     question = qa['question']
+# #     answer = qa['answer']
+
+# #     # with open("prompts/solo_research_agent.md", "r") as f:
+# #     #     PROMPT = f.read()
+# #     #     PROMPT = PROMPT.replace("{{.CurrentDate}}", datetime.now().strftime("%B %d, %Y"))
+
+# #     question = dummy_question
+# #     answer = dummy_answer
+
+# #     messages = asyncio.run(run_one_search(model=dummy_model, system_prompt=dummy_system_prompt, subagent_prompt=research_subagent_prompt, question=question, tools=tools, debug_verbose=True))
+# #     # messages = asyncio.run(run_one_search(model=dummy_model, system_prompt=lead_researcher_prompt, subagent_prompt=research_subagent_prompt, question=question, tools=tools, debug_verbose=True))
+# #     visualize_conversation(messages)
+
+# #     serialized = [serialize_message(msg) for msg in messages]
+# #     response = get_result_from_messages(messages)
+
+# #     result = {
+# #         "question": question,
+# #         "expected_answer": answer,
+# #         "recieved_answer": response,
+# #         "messages": serialized
+# #     }
+
+# #     save_result(result, filecode="multiagent_test")
+# #     export_to_md(result_text=response, filecode="multiagent_test") # type: ignore
 

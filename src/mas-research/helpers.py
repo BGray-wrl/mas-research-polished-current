@@ -1,3 +1,5 @@
+from datetime import datetime
+import os
 import warnings
 import pandas as pd
 import json
@@ -74,7 +76,7 @@ def load_messages_from_json(filepath: str):
         data = json.load(f)
         return data
     
-def get_result_from_messages(messages = None, filepath = None):
+def get_result_from_messages(messages = None, filepath = None) -> str | None:
     
     if messages is None:
         if filepath:
@@ -97,6 +99,38 @@ def get_result_from_messages(messages = None, filepath = None):
                 return result
     return None
 
+
+def save_result(result: dict, filecode: str = "browsecomp"):
+    # os.makedirs(f"results/{filecode}", exist_ok=True)
+    timestamp = datetime.now().strftime("%b-%d-%H-%M")
+    filename = f"{timestamp}"
+    os.makedirs(f"results/{filecode}/{filename}", exist_ok=True)
+
+    with open(f"results/{filecode}/{filename}/result.json", "w") as f:
+        json.dump(result, f, indent=2)
+    with open(f"results/{filecode}/current.json", "w") as f:
+        json.dump(result, f, indent=2)
+    
+    print(f"✅ Saved result to {filename}")
+    print(f"✅ Also updated {filecode}_current.json")
+
+def export_to_md(result_text: str, filecode: str = "browsecomp"):
+    timestamp = datetime.now().strftime("%b-%d-%H-%M")
+    filename = f"{timestamp}"
+
+    os.makedirs(f"results/{filecode}/{filename}", exist_ok=True)
+    with open(f"results/{filecode}/{filename}/report.md", "w", encoding="utf-8") as f:
+        f.write(result_text.strip() + "\n")
+    print(f"Markdown exported to {filename}")
+
+
+# Load a prompt from a markdown file and replace date placeholders
+def load_prompt(filepath: str) -> str:
+    with open(filepath, "r") as f:
+        researcher_prompt = f.read()
+        researcher_prompt = researcher_prompt.replace("{{.CurrentDate}}", datetime.now().strftime("%B %d, %Y"))
+        return researcher_prompt
+    
 
 if __name__ == "__main__":
     data = get_one_browsecomp_question_answer()
