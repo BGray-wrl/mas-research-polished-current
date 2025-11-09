@@ -5,7 +5,7 @@ from helpers import get_browsecomp_result, get_final_result_from_saved_messages,
 
 from browsecomp_openai.samplers import ChatCompletionSampler
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # type: ignore
 import os
 
 load_dotenv()
