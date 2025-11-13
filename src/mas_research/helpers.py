@@ -35,23 +35,24 @@ def get_browsecomp_result(filepath: str):
 
 ## Get all questions and answers from the BrowseComp test set as JSON
 ## Output: [ { "question": ..., "answer": ... }, ... ]
-def get_browsecomp_qas(filepath, num_rows=None):
-    
+def get_browsecomp_qas(filepath, num_rows=None, offset=4):
     bc = pd.read_csv(filepath)
-    if num_rows and num_rows < len(bc):
-        bc = bc.head(num_rows)
-    # print(f"Shape: {bc.shape}")  # (rows, columns)
 
+    if offset >= len(bc):
+        return []
+
+    if num_rows is not None:
+        bc = bc.iloc[offset:offset + num_rows]
+    else:
+        bc = bc.iloc[offset:]
 
     questions_and_answers = []
-    for idx in range(len(bc)):
-        question = bc.iloc[idx]['problem']
-        answer = bc.iloc[idx]['answer']
+    for _, row in bc.iterrows():
         questions_and_answers.append({
-            "question": question,
-            "answer": answer
+            "question": row['problem'],
+            "answer": row['answer']
         })
-    
+
     return questions_and_answers
     
 
@@ -100,13 +101,13 @@ def get_result_from_messages(messages = None, filepath = None) -> str | None:
     return None
 
 
-def save_result(result: dict, filecode: str = "browsecomp"):
+def save_result(result: dict, filecode: str = "browsecomp", num = ""):
     # os.makedirs(f"results/{filecode}", exist_ok=True)
     timestamp = datetime.now().strftime("%b-%d-%H-%M")
     filename = f"{timestamp}"
     os.makedirs(f"results/{filecode}/{filename}", exist_ok=True)
 
-    with open(f"results/{filecode}/{filename}/result.json", "w") as f:
+    with open(f"results/{filecode}/{filename}/result{str(num)}.json", "w") as f:
         json.dump(result, f, indent=2)
     with open(f"results/{filecode}/current.json", "w") as f:
         json.dump(result, f, indent=2)
@@ -114,12 +115,12 @@ def save_result(result: dict, filecode: str = "browsecomp"):
     print(f"✅ Saved result to {filename}")
     print(f"✅ Also updated {filecode}_current.json")
 
-def export_to_md(result_text: str, filecode: str = "browsecomp"):
+def export_to_md(result_text: str, filecode: str = "browsecomp", num = ""):
     timestamp = datetime.now().strftime("%b-%d-%H-%M")
     filename = f"{timestamp}"
 
     os.makedirs(f"results/{filecode}/{filename}", exist_ok=True)
-    with open(f"results/{filecode}/{filename}/report.md", "w", encoding="utf-8") as f:
+    with open(f"results/{filecode}/{filename}/report{str(num)}.md", "w", encoding="utf-8") as f:
         f.write(result_text.strip() + "\n")
     print(f"Markdown exported to {filename}")
 

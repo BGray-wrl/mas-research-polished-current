@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Ensure we can import the lead researcher module despite the hyphenated folder name
 THIS_DIR = Path(__file__).resolve().parent
-LR_DIR = THIS_DIR / "mas-research"
+LR_DIR = THIS_DIR / "mas_research"
 if str(LR_DIR) not in sys.path:
 	sys.path.insert(0, str(LR_DIR))
 
@@ -41,8 +41,11 @@ def get_result_from_messages(messages = None, filepath = None):
     return None
 
 
-filepath = "multiagent_test_current.json"
 filepath = "results/dummy-multiagent/current.json"
+filepath = "results/eval-singleagent/Nov-09-06-24/result14.json"
+filepath = "results/eval-multiagent/Nov-09-06-54/result12.json"
+
+
 
 
 if __name__ == "__main__":
@@ -63,4 +66,6 @@ if __name__ == "__main__":
     print(f"  Cost: ${summary['cost_usd']:.4f}")
     print(f"  Duration: {summary['duration_seconds']:.1f}s")
     print(f"  Tokens: {summary['total_tokens']:,}")
+    print(f"  Grade: {summary['grade']}")
+
 

@@ -1,3 +1,5 @@
+## File largely written by GitHub Copilot running Claude Sonnet 4.5
+
 from typing import Dict, List, Any
 from collections import defaultdict, Counter
 
@@ -21,12 +23,14 @@ def analyze_agent_metrics(data: Dict[str, Any]) -> Dict[str, Any]:
             'expected_answer': data.get('expected_answer', 'N/A'),
             'received_answer': data.get('recieved_answer', 'N/A'),
             'total_messages': len(messages),
+            'evaluation': data.get('evaluation', 'N/A'),
+            'grade': data.get('grade', 'N/A'),
         },
         'agents': {
             'total_subagent_calls': 0,
             'subagent_types': [],
             'models_used': Counter(),
-            'by_agent': {},  # NEW: per-agent metrics
+            'by_agent': {},  # per-agent metrics
         },
         'tools': {
             'total_tool_calls': 0,
@@ -63,6 +67,10 @@ def analyze_agent_metrics(data: Dict[str, Any]) -> Dict[str, Any]:
     
     # Track unique subagent IDs to count distinct subagent instances
     subagent_tool_use_ids = set()
+    # Track Task tool use IDs to match with their results
+    task_tool_use_to_prompt = {}
+    # NEW: Track global tool call counter
+    global_tool_call_counter = 0
     
     # Process each message
     for msg in messages:
@@ -75,19 +83,22 @@ def analyze_agent_metrics(data: Dict[str, Any]) -> Dict[str, Any]:
         parent_tool_use_id = msg_data.get('parent_tool_use_id')
         is_subagent = parent_tool_use_id is not None
         
-        # NEW: Determine agent identifier
+        # Determine agent identifier
         agent_id = parent_tool_use_id if is_subagent else 'lead_agent'
         
-        # NEW: Initialize agent metrics if first time seeing this agent
+        # Initialize agent metrics if first time seeing this agent
         if agent_id not in metrics['agents']['by_agent']:
             metrics['agents']['by_agent'][agent_id] = {
                 'messages': 0,
                 'tool_calls': Counter(),
                 'errors': 0,
                 'model': None,
+                'initializing_prompt': None,
+                'return_text': None,
+                'initialized_at_tool_call': None,  # NEW
             }
         
-        # NEW: Increment message count for this agent
+        # Increment message count for this agent
         metrics['agents']['by_agent'][agent_id]['messages'] += 1
         
         if is_subagent:
@@ -99,7 +110,6 @@ def analyze_agent_metrics(data: Dict[str, Any]) -> Dict[str, Any]:
         if 'model' in msg_data:
             model = msg_data['model']
             metrics['agents']['models_used'][model] += 1
-            # NEW: Track model for this specific agent
             metrics['agents']['by_agent'][agent_id]['model'] = model
         
         # Process content blocks
@@ -112,19 +122,32 @@ def analyze_agent_metrics(data: Dict[str, Any]) -> Dict[str, Any]:
                     # Count tool uses
                     if block_type == 'ToolUseBlock':
                         tool_name = block.get('name', 'Unknown')
+                        # NEW: Increment global tool call counter
+                        global_tool_call_counter += 1
+                        
                         metrics['tools']['total_tool_calls'] += 1
                         metrics['tools']['by_tool'][tool_name] += 1
                         
-                        # NEW: Track tool use for this specific agent
                         metrics['agents']['by_agent'][agent_id]['tool_calls'][tool_name] += 1
                         
                         # Track if this is a subagent call
                         if tool_name == 'Task':
                             metrics['agents']['total_subagent_calls'] += 1
-                            subagent_type = block.get('input', {}).get('subagent_type', 'Unknown')
+                            tool_input = block.get('input', {})
+                            subagent_type = tool_input.get('subagent_type', 'Unknown')
                             if subagent_type not in metrics['agents']['subagent_types']:
                                 metrics['agents']['subagent_types'].append(subagent_type)
-                            subagent_tool_use_ids.add(block.get('id'))
+                            
+                            tool_use_id = block.get('id')
+                            subagent_tool_use_ids.add(tool_use_id)
+                            
+                            # NEW: Store the initializing prompt for this Task
+                            task_tool_use_to_prompt[tool_use_id] = {
+                                'description': tool_input.get('description', 'N/A'),
+                                'subagent_type': subagent_type,
+                                'prompt': tool_input.get('prompt', 'N/A'),
+                                'tool_call_number': global_tool_call_counter,  # NEW
+                            }
                         
                         # Categorize by agent level
                         if is_subagent:
@@ -132,11 +155,44 @@ def analyze_agent_metrics(data: Dict[str, Any]) -> Dict[str, Any]:
                         else:
                             metrics['tools']['by_agent_level']['lead_agent'][tool_name] += 1
                     
-                    # Count errors
+                    # NEW: Extract return text from ToolResultBlock for Task tools
                     elif block_type == 'ToolResultBlock':
+                        tool_use_id = block.get('tool_use_id')
+                        
+                        # Check if this is a result for a Task tool
+                        if tool_use_id in task_tool_use_to_prompt:
+                            # Extract text content
+                            result_content = block.get('content', [])
+                            return_text = None
+                            
+                            if isinstance(result_content, list):
+                                for content_item in result_content:
+                                    if isinstance(content_item, dict) and content_item.get('type') == 'text':
+                                        return_text = content_item.get('text', 'N/A')
+                                        break
+                            elif isinstance(result_content, str):
+                                return_text = result_content
+                            
+                            # NEW: Initialize agent entry if it doesn't exist yet (subagent may have returned without sending any messages)
+                            if tool_use_id not in metrics['agents']['by_agent']:
+                                metrics['agents']['by_agent'][tool_use_id] = {
+                                    'messages': 0,
+                                    'tool_calls': Counter(),
+                                    'errors': 0,
+                                    'model': None,
+                                    'initializing_prompt': None,
+                                    'return_text': None,
+                                    'initialized_at_tool_call': None,
+                                }
+                            
+                            # Store the prompt and return text for this subagent
+                            metrics['agents']['by_agent'][tool_use_id]['initializing_prompt'] = task_tool_use_to_prompt[tool_use_id]
+                            metrics['agents']['by_agent'][tool_use_id]['return_text'] = return_text
+                            metrics['agents']['by_agent'][tool_use_id]['initialized_at_tool_call'] = task_tool_use_to_prompt[tool_use_id]['tool_call_number']
+                        
+                        # Count errors
                         if block.get('is_error'):
                             metrics['tools']['errors'] += 1
-                            # NEW: Track errors for this specific agent
                             metrics['agents']['by_agent'][agent_id]['errors'] += 1
                             metrics['tools']['error_details'].append({
                                 'tool_use_id': block.get('tool_use_id'),
@@ -180,9 +236,12 @@ def print_metrics_report(metrics: Dict[str, Any]) -> None:
     # Overview
     print("\n📊 OVERVIEW")
     print("-" * 80)
-    print(f"Question: {metrics['overview']['question'][:100]}...")
+    print(f"Question: {metrics['overview']['question'][:70]}...")
     print(f"Expected Answer: {metrics['overview']['expected_answer']}")
-    print(f"Received Answer: {metrics['overview']['received_answer'][:100]}...")
+    print(f"Received Answer: {metrics['overview']['received_answer'][:50]}...")
+    print(f"Evaluation: {metrics['overview']['evaluation'][:50]}...")
+    print(f"Grade: {metrics['overview']['grade']}")
+
     print(f"Total Messages: {metrics['overview']['total_messages']}")
     
     # Agent Stats
@@ -195,12 +254,15 @@ def print_metrics_report(metrics: Dict[str, Any]) -> None:
     for model, count in metrics['agents']['models_used'].items():
         print(f"  - {model}: {count} calls")
     
-    # NEW: Per-agent breakdown
+    # Per-agent breakdown with prompt and return text
     print(f"\n📊 PER-AGENT METRICS")
     print("-" * 80)
     for agent_id, agent_metrics in metrics['agents']['by_agent'].items():
         agent_name = 'Lead Agent' if agent_id == 'lead_agent' else f'Subagent {agent_id[:8]}...'
         print(f"\n  {agent_name}:")
+        # NEW: Display which tool call initialized this agent
+        if agent_metrics['initialized_at_tool_call'] is not None:
+            print(f"    Initialized at Tool Call: #{agent_metrics['initialized_at_tool_call']}")
         print(f"    Model: {agent_metrics['model']}")
         print(f"    Messages: {agent_metrics['messages']}")
         print(f"    Tool Calls: {sum(agent_metrics['tool_calls'].values())}")
@@ -209,6 +271,28 @@ def print_metrics_report(metrics: Dict[str, Any]) -> None:
             print(f"    Tools Used:")
             for tool, count in agent_metrics['tool_calls'].most_common():
                 print(f"      - {tool}: {count}")
+        
+        # Print initializing prompt for subagents
+        if agent_metrics['initializing_prompt']:
+            prompt_info = agent_metrics['initializing_prompt']
+            print(f"    Initializing Prompt:")
+            print(f"      Description: {prompt_info['description']}")
+            print(f"      Subagent Type: {prompt_info['subagent_type']}")
+            prompt_text = prompt_info['prompt']
+            # Truncate long prompts
+            if len(prompt_text) > 150:
+                print(f"      Prompt: {prompt_text[:150]}...")
+            else:
+                print(f"      Prompt: {prompt_text}")
+        
+        # Print return text for subagents
+        if agent_metrics['return_text']:
+            return_text = agent_metrics['return_text']
+            # Truncate long return text
+            if len(return_text) > 50:
+                print(f"    Return Text: {return_text[:50]}...")
+            else:
+                print(f"    Return Text: {return_text}")
     
     # Message Breakdown
     print("\n📨 MESSAGE BREAKDOWN")
@@ -284,4 +368,5 @@ def get_metrics_summary(data: Dict[str, Any]) -> Dict[str, Any]:
         'duration_seconds': metrics['costs']['duration_seconds'],
         'total_tokens': metrics['costs']['token_usage']['total_tokens'],
         'web_searches': metrics['costs']['web_search_requests'],
+        'grade': metrics['overview']['grade'],
     }

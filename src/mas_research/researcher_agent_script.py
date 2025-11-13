@@ -15,6 +15,24 @@ from typing import Any, Dict
 
 
 
+# ## 'simple' mode: single agent with query() only. Deprecated.
+# async def simple_agentic_query(model: str, system_prompt: str, question: str, tools: list, debug_verbose: bool = False):
+#     options = ClaudeAgentOptions(
+#         model=model,
+#         system_prompt=system_prompt,
+#         allowed_tools=tools,
+#         disallowed_tools=['Task'],
+#         max_turns=50,
+#     )
+
+#     async for message in query(
+#         prompt=question,
+#         options=options
+#     ):
+#         print(message)
+
+
+
 async def run_one_search(model: str, system_prompt: str, subagent_prompt: str, question: str, tools: list, debug_verbose: bool = False):
     messages = []
 
@@ -30,9 +48,9 @@ async def run_one_search(model: str, system_prompt: str, subagent_prompt: str, q
                 description="A fully capable researcher that can search the web.",
                 prompt=subagent_prompt,
                 model="haiku",
-                tools=["WebSearch", "Read"]
+                tools=["WebSearch", "WebFetch", "Read", "Bash"]
                 )
-            }
+            } if subagent_prompt and len(subagent_prompt) > 0 else None,
         )
     ) as research_agent:
         await research_agent.query(question)
@@ -54,6 +72,7 @@ def run_via_config(config: Dict[str, Any]) -> Dict[str, Any]:
     - mode: "dummy" | "default"
     """
     mode = (config or {}).get("mode", "dummy")
+
     debug_verbose = bool((config or {}).get("debug_verbose", False))
     filecode = (config or {}).get("filecode", "misc")
 
@@ -69,10 +88,9 @@ def run_via_config(config: Dict[str, Any]) -> Dict[str, Any]:
 
     else:
         lead_researcher_prompt = load_prompt(config["system_prompt_filepath"]) 
-        researcher_subagent_prompt = load_prompt(config["research_subagent_prompt_filepath"]) 
-
         system_prompt_to_use = lead_researcher_prompt
-        researcher_subagent_prompt_to_use = researcher_subagent_prompt
+
+        
         qa_idx = int(config.get("question_index", 0))
         qa = get_one_browsecomp_question_answer(
             idx=qa_idx, print_question=bool(config.get("print_question", False))
@@ -80,6 +98,11 @@ def run_via_config(config: Dict[str, Any]) -> Dict[str, Any]:
         # Be robust to potential pandas Series types
         question = str(qa["question"])  # type: ignore[arg-type]
         expected_answer = str(qa["answer"])  # type: ignore[arg-type]
+
+
+        subagent_pathway = config.get("research_subagent_prompt_filepath", None)
+        researcher_subagent_prompt = load_prompt(subagent_pathway) if subagent_pathway else ""
+        researcher_subagent_prompt_to_use = researcher_subagent_prompt
 
 
     messages = asyncio.run(
