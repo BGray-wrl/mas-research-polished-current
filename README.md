@@ -20,7 +20,7 @@ Metrics summary written to FILENAME
 
 And if that all works, out-of-the-box 
     `uv run experiments/experiments_and_visuals.py` 
-Should work as well, generating visuals.
+Should work as well, generating visuals. It will also work with my example datafile data/dataset.csv
 
 
 Note that this is all an early version, I intend to update the process soon and make it more robust.
