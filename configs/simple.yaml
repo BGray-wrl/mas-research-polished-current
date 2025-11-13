@@ -1,0 +1,13 @@
+# Minimal config to run the lead researcher in dummy mode
+mode: simple
+
+# Optional overrides (safe defaults are used if omitted)
+tools: ["Read", "WebSearch", "WebFetch"]
+debug_verbose: true
+filecode: dummy-multiagent
+
+
+# Path to prompt files
+system_prompt_filepath: "prompts/simple_research_agent.md"
+
+model : "claude-haiku-4-5-20251001"

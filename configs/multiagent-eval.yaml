@@ -1,12 +1,14 @@
 # Minimal config to run the lead researcher with the default settings
-mode: default
+mode: eval
 
 # Index into the BrowseComp dataset (preserves existing logic)
 question_index: 0
+num_questions: 4
+offset: 10
 print_question: true
-debug_verbose: true
+debug_verbose: false
 tools: ["WebSearch", "WebFetch", "Read", "Task", "Bash"]
-filecode: multiagent
+filecode: eval-multiagent
 
 
 # Path to prompt files

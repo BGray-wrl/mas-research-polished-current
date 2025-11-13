@@ -1,8 +1,7 @@
 # Minimal config to run the lead researcher in dummy mode
-mode: dummy
+mode: simple
 
 # Optional overrides (safe defaults are used if omitted)
-tools: ["Read", "WebSearch"]
 debug_verbose: true
 filecode: dummy-multiagent
 
@@ -16,4 +15,4 @@ dummy_system_prompt: "You are a lazy professional researcher. Your goal is to fi
 dummy_researcher_prompt: "You are a diligent subagent researcher. Your goal is to find accurate information to help the lead researcher in accordance with their instructions. Use web search and reading tools as needed."
 dummy_question: "Who won the NYC mayoral election in 2025? Use the researcher subagent to find out."
 dummy_answer: "Zohran Mamdani"
-tools: ["Read", "WebSearch"]
+tools: ["Read", "WebSearch", "WebFetch"]
