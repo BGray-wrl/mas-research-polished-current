@@ -1,5 +1,5 @@
 # Minimal config to run the lead researcher in dummy mode
-mode: simple
+mode: dummy
 
 # Optional overrides (safe defaults are used if omitted)
 debug_verbose: true

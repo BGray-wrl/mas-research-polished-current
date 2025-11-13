@@ -16,7 +16,7 @@ import yaml  # type: ignore
 
 # Ensure we can import the lead researcher module despite the hyphenated folder name
 THIS_DIR = Path(__file__).resolve().parent
-LR_DIR = THIS_DIR / "mas-research"
+LR_DIR = THIS_DIR / "mas_research"
 if str(LR_DIR) not in sys.path:
 	sys.path.insert(0, str(LR_DIR))
 
@@ -59,7 +59,7 @@ def main() -> None:
 		result = lr.run_via_config(config)
 
 	# Minimal, human-readable summary
-	if False:
+	if True:
 		print("\n=== Run Summary ===")
 		print(f"Mode: {config.get('mode', 'default')}")
 
