@@ -65,84 +65,85 @@ async def run_one_search(model: str, system_prompt: str, subagent_prompt: str, q
 
 
 
-# --- Lightweight config-driven wrapper (keeps __main__ unchanged) ---
-def run_via_config(config: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Small convenience wrapper to run the pipeline using a simple config dict.
-    - mode: "dummy" | "default"
-    """
-    mode = (config or {}).get("mode", "dummy")
+# # ## Connection point from main_runner.py. All modes but eval ##
+# Deprecated in favor of main_browsecomp_eval in run_eval.py   
+# def run_via_config(config: Dict[str, Any]) -> Dict[str, Any]:
+#     """
+#     Small convenience wrapper to run the pipeline using a simple config dict.
+#     - mode: "dummy" | "default"
+#     """
+#     mode = (config or {}).get("mode", "dummy")
 
-    debug_verbose = bool((config or {}).get("debug_verbose", False))
-    filecode = (config or {}).get("filecode", "misc")
+#     debug_verbose = bool((config or {}).get("debug_verbose", False))
+#     filecode = (config or {}).get("filecode", "misc")
 
-    model_to_use = config.get("model", "claude-haiku-4-5-20251001")
-    tools_to_use = config["tools"]
+#     model_to_use = config.get("model", "claude-haiku-4-5-20251001")
+#     tools_to_use = config["tools"]
 
 
-    if mode == "dummy":
-        system_prompt_to_use = config["dummy_system_prompt"]
-        researcher_subagent_prompt_to_use = config["dummy_researcher_prompt"]
-        question = config["dummy_question"]
-        expected_answer = config["dummy_answer"]
+#     if mode == "dummy":
+#         system_prompt_to_use = config["dummy_system_prompt"]
+#         researcher_subagent_prompt_to_use = config["dummy_researcher_prompt"]
+#         question = config["dummy_question"]
+#         expected_answer = config["dummy_answer"]
 
-    else:
-        lead_researcher_prompt = load_prompt(config["system_prompt_filepath"]) 
-        system_prompt_to_use = lead_researcher_prompt
+#     else:
+#         lead_researcher_prompt = load_prompt(config["system_prompt_filepath"]) 
+#         system_prompt_to_use = lead_researcher_prompt
 
         
-        qa_idx = int(config.get("question_index", 0))
-        qa = get_one_browsecomp_question_answer(
-            idx=qa_idx, print_question=bool(config.get("print_question", False))
-        )
-        # Be robust to potential pandas Series types
-        question = str(qa["question"])  # type: ignore[arg-type]
-        expected_answer = str(qa["answer"])  # type: ignore[arg-type]
+#         qa_idx = int(config.get("question_index", 0))
+#         qa = get_one_browsecomp_question_answer(
+#             idx=qa_idx, print_question=bool(config.get("print_question", False))
+#         )
+#         # Be robust to potential pandas Series types
+#         question = str(qa["question"])  # type: ignore[arg-type]
+#         expected_answer = str(qa["answer"])  # type: ignore[arg-type]
 
 
-        subagent_pathway = config.get("research_subagent_prompt_filepath", None)
-        researcher_subagent_prompt = load_prompt(subagent_pathway) if subagent_pathway else ""
-        researcher_subagent_prompt_to_use = researcher_subagent_prompt
+#         subagent_pathway = config.get("research_subagent_prompt_filepath", None)
+#         researcher_subagent_prompt = load_prompt(subagent_pathway) if subagent_pathway else ""
+#         researcher_subagent_prompt_to_use = researcher_subagent_prompt
 
 
-    messages = asyncio.run(
-        run_one_search(
-            model=model_to_use,
-            system_prompt=system_prompt_to_use,
-            subagent_prompt=researcher_subagent_prompt_to_use,
-            question=question,
-            tools=tools_to_use,
-            debug_verbose=debug_verbose,
-        )
-    )
+#     messages = asyncio.run(
+#         run_one_search(
+#             model=model_to_use,
+#             system_prompt=system_prompt_to_use,
+#             subagent_prompt=researcher_subagent_prompt_to_use,
+#             question=question,
+#             tools=tools_to_use,
+#             debug_verbose=debug_verbose,
+#         )
+#     )
 
-    visualize_conversation(messages)
+#     visualize_conversation(messages)
 
-    serialized = [serialize_message(msg) for msg in messages]
-    response = get_result_from_messages(messages)
-
-
-    evaluation = evaluate_answer(
-        question=question,
-        correct_answer=expected_answer,
-        response=response if response else "No response received.",
-    )
-
-    result = {
-        "question": question,
-        "expected_answer": expected_answer,
-        "recieved_answer": response,
-        "evaluation": evaluation.get("evaluation", ""),
-        "grade": evaluation.get("grade", "no"),
-        "messages": serialized,
-    }
+#     serialized = [serialize_message(msg) for msg in messages]
+#     response = get_result_from_messages(messages)
 
 
+#     evaluation = evaluate_answer(
+#         question=question,
+#         correct_answer=expected_answer,
+#         response=response if response else "No response received.",
+#     )
 
-    save_result(result, filecode=filecode)
-    export_to_md(result_text=response, filecode=filecode) # type: ignore
+#     result = {
+#         "question": question,
+#         "expected_answer": expected_answer,
+#         "received_answer": response,
+#         "evaluation": evaluation.get("evaluation", ""),
+#         "grade": evaluation.get("grade", "no"),
+#         "messages": serialized,
+#     }
 
-    return result
+
+
+#     save_result(result, filecode=filecode)
+#     export_to_md(result_text=response, filecode=filecode) # type: ignore
+
+#     return result
 
 
 # OLD CODE BELOW - FOR REFERENCE ONLY
@@ -173,7 +174,7 @@ def run_via_config(config: Dict[str, Any]) -> Dict[str, Any]:
 # #     result = {
 # #         "question": question,
 # #         "expected_answer": answer,
-# #         "recieved_answer": response,
+# #         "received_answer": response,
 # #         "messages": serialized
 # #     }
 

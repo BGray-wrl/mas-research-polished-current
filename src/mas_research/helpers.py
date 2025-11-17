@@ -5,7 +5,28 @@ import pandas as pd
 import json
 
 from utils.message_serializer import serialize_message
+from datasets import load_dataset
 
+
+md_report_template = """
+# Run Report {num}
+Filecode: {filecode}
+Date: {timestamp}
+
+## Question & Answer
+#### Question:
+{question}
+
+#### Expected Answer:
+{expected_answer}
+
+#### Grade & Correctness:
+Correct (yes/no): {grade}, Correctness: {correctness_score}/10.0
+
+# Model Response:
+{result_text}
+
+"""
 
 
 ## Get one question and answer from the BrowseComp test set. 
@@ -55,6 +76,29 @@ def get_browsecomp_qas(filepath, num_rows=None, offset=4):
 
     return questions_and_answers
     
+
+def get_webwalker_qas(filepath = "callanwu/WebWalkerQA", num_rows=None, offset=4):
+    
+    ds = load_dataset(filepath)
+
+    db = pd.DataFrame(ds['main'])
+
+    if offset >= len(db):
+        return []
+
+    if num_rows is not None:
+        db = db.iloc[offset:offset + num_rows]
+    else:
+        db = db.iloc[offset:]
+
+    questions_and_answers = []
+    for _, row in db.iterrows():
+        questions_and_answers.append({
+            "question": row['question'],
+            "answer": row['answer']
+        })
+
+    return questions_and_answers
 
 
 def get_final_result_from_saved_messages(filepath):
@@ -114,14 +158,29 @@ def save_result(result: dict, filecode: str = "browsecomp", num = ""):
     
     print(f"✅ Saved result to {filename}")
     print(f"✅ Also updated {filecode}_current.json")
+    return f"results/{filecode}/{filename}/result{str(num)}.json"
 
-def export_to_md(result_text: str, filecode: str = "browsecomp", num = ""):
+def export_to_md(
+        question: str, expected_answer: str,
+        grade: str, correctness: float | int | str,
+        result_text: str, filecode: str = "browsecomp", num = ""):
     timestamp = datetime.now().strftime("%b-%d-%H-%M")
     filename = f"{timestamp}"
 
+    result_text = md_report_template.format(
+        num=num,
+        filecode=filecode,
+        timestamp=timestamp,
+        question=question,
+        expected_answer=expected_answer,
+        grade=grade,
+        correctness_score=correctness,
+        result_text=result_text.strip()
+    )
+
     os.makedirs(f"results/{filecode}/{filename}", exist_ok=True)
     with open(f"results/{filecode}/{filename}/report{str(num)}.md", "w", encoding="utf-8") as f:
-        f.write(result_text.strip() + "\n")
+        f.write(result_text + "\n")
     print(f"Markdown exported to {filename}")
 
 

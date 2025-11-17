@@ -21,10 +21,13 @@ def analyze_agent_metrics(data: Dict[str, Any]) -> Dict[str, Any]:
         'overview': {
             'question': data.get('question', 'N/A'),
             'expected_answer': data.get('expected_answer', 'N/A'),
-            'received_answer': data.get('recieved_answer', 'N/A'),
+            'received_answer': data.get('received_answer', 'N/A'),
+            'extracted_final_answer': data.get('extracted_final_answer', 'N/A'),
             'total_messages': len(messages),
             'evaluation': data.get('evaluation', 'N/A'),
             'grade': data.get('grade', 'N/A'),
+            'correctness': data.get("correctness", 'N/A'),
+            'confidence': data.get("confidence", 'N/A'),
         },
         'agents': {
             'total_subagent_calls': 0,
@@ -236,11 +239,15 @@ def print_metrics_report(metrics: Dict[str, Any]) -> None:
     # Overview
     print("\n📊 OVERVIEW")
     print("-" * 80)
-    print(f"Question: {metrics['overview']['question'][:70]}...")
+    print(f"Question: {metrics['overview']['question'][:]}...")
     print(f"Expected Answer: {metrics['overview']['expected_answer']}")
     print(f"Received Answer: {metrics['overview']['received_answer'][:50]}...")
+    print(f"Extracted Final Answer: {metrics['overview']['extracted_final_answer'][:75]}")
     print(f"Evaluation: {metrics['overview']['evaluation'][:50]}...")
     print(f"Grade: {metrics['overview']['grade']}")
+    print(f"Correctness: {metrics['overview']['correctness']}/10.0" if metrics['overview'].get('correctness', None) is not None else "")
+
+
 
     print(f"Total Messages: {metrics['overview']['total_messages']}")
     
@@ -369,4 +376,5 @@ def get_metrics_summary(data: Dict[str, Any]) -> Dict[str, Any]:
         'total_tokens': metrics['costs']['token_usage']['total_tokens'],
         'web_searches': metrics['costs']['web_search_requests'],
         'grade': metrics['overview']['grade'],
+        'correctness': metrics['overview']['correctness'],
     }

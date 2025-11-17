@@ -49,14 +49,14 @@ def main() -> None:
 		sys.exit(1)
 
 	config = load_yaml(cfg_path)
-	mode = config.get("mode", "default")
+	# mode = config.get("mode", "default")
 
-	if mode == "eval":
-		print(f"Running in EVAL mode using config: {cfg_path}")
-		result = asyncio.run(reval.main_browsecomp_eval(config))
-	else:
-		# Drive the existing pipeline via a tiny wrapper in the module
-		result = lr.run_via_config(config)
+	# if mode == "eval":
+	# 	print(f"Running in EVAL mode using config: {cfg_path}")
+	result = asyncio.run(reval.main_browsecomp_eval(config))
+	# else:
+	# 	# Drive the existing pipeline via a tiny wrapper in the module
+	# 	result = lr.run_via_config(config)
 
 	# Minimal, human-readable summary
 	if True:
@@ -66,14 +66,14 @@ def main() -> None:
 		if type(result) is not list:
 			print(f"Question: {result.get('question', '')}")
 			print(f"Expected: {result.get('expected_answer', '')}")
-			print(f"Received: {result.get('recieved_answer', '')}")
+			print(f"Received: {result.get('received_answer', '')}")
 		else:
 			print(f"Total runs: {len(result)}")
 			for idx, res in enumerate(result):
 				print(f"\n--- Run {idx+1} ---")
 				print(f"Question: {res.get('question', '')}")
 				print(f"Expected: {res.get('expected_answer', '')}")
-				print(f"Received: {res.get('recieved_answer', '')}")
+				print(f"Received: {res.get('received_answer', '')}")
 
 if __name__ == "__main__":
 	main()

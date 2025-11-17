@@ -203,6 +203,8 @@ def extract_run_metrics(metrics: Dict[str, Any]) -> Dict[str, Any]:
         'question': metrics['overview']['question'],
         'expected_answer': metrics['overview']['expected_answer'],
         'received_answer': metrics['overview']['received_answer'],
+        'correctness': metrics['overview'].get('correctness'),
+        'confidence': metrics['overview'].get('confidence'),
     }
 
 
@@ -310,6 +312,8 @@ def create_dataset(results: Dict[str, List[Dict[str, Any]]]) -> pd.DataFrame:
                 'clustering_mean': clustering_mean,
                 'clustering_std': clustering_std,
                 'num_clusters': len(clustering),
+                'correctness': run_data['correctness'],
+                'confidence': run_data['confidence'],
             }
             
             all_records.append(record)
@@ -346,7 +350,8 @@ def save_dataset(dataset: pd.DataFrame, output_path: str):
 
 if __name__ == "__main__":
     # Example usage
-    results_path = "data/cur.json"
+    path = "runww25sg"
+    results_path = f"data/{path}.json"
     dataset = load_and_create_dataset(results_path)
     
     # Print summary
@@ -358,14 +363,16 @@ if __name__ == "__main__":
         subset = dataset[dataset['run_type'] == run_type]
         print(f"\n{run_type}: {len(subset)} runs")
         print(f"  Avg accuracy: {subset['accuracy'].mean():.2f}")
+        print(f"  Avg correctness: {subset['correctness'].mean():.2f}")
+        print(f"  Avg confidence: {subset['confidence'].mean():.2f}%")
         print(f"  Avg time: {subset['time_seconds'].mean():.2f}s")
         print(f"  Avg tokens: {subset['total_tokens'].mean():.0f}")
         print(f"  Avg cost: ${subset['cost_usd'].mean():.4f}")
         print(f"  Avg subagents: {subset['num_subagents'].mean():.1f}")
     
     # Save dataset
-    save_dataset(dataset, "data/dataset.csv")
-    print("\nDataset saved to data/dataset.csv")
+    save_dataset(dataset, f"data/{path}.csv")
+    print(f"\nDataset saved to data/{path}.csv")
     
     # Also print basic stats
     print("\n" + "=" * 80)

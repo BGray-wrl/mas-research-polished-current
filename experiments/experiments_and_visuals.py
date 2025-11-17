@@ -355,7 +355,7 @@ def run_all_experiments(csv_path: str, output_dir: str = 'experiments') -> dict:
 
 if __name__ == "__main__":
     # Run all experiments
-    csv_path = "data/dataset.csv"
+    csv_path = "data/runww25.csv"
     output_dir = "experiments"
     
     results = run_all_experiments(csv_path, output_dir)

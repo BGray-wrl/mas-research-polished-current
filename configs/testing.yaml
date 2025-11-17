@@ -1,18 +1,22 @@
 # Minimal config to run the lead researcher with the default settings
 mode: eval
-evalset: browsecomp
+evalset: webwalker
 
 # Index into the BrowseComp dataset (preserves existing logic)
-num_questions: 4
-offset: 10
+num_questions: 1
+offset: 26
 print_question: true
-debug_verbose: false
+debug_verbose: true
 tools: ["WebSearch", "WebFetch", "Read", "Task", "Bash"]
-filecode: eval-multiagent
 
+# filecode: ww-test-singleagent  ## evalset-evaltype-agentsetup ## ||  ww/bc/gaia - eval/dummy/test - singleagent/multiagent
+filecode: ww-test-multiagent  
 
 # Path to prompt files
 system_prompt_filepath: "prompts/research_lead_agent.md"
 research_subagent_prompt_filepath: "prompts/research_subagent.md"
+
+# system_prompt_filepath: "prompts/single_research_agent.md"
+# research_subagent_prompt_filepath: ""
 
 # Optional overrides (safe defaults are used if omitted)

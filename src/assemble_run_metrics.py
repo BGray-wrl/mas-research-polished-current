@@ -16,8 +16,6 @@ from utils.message_serializer import serialize_message # type: ignore
 from utils.metrics_analyzer import analyze_agent_metrics, print_metrics_report, get_metrics_summary # type: ignore
 
 
-filepath = "results/eval-singleagent/Nov-09-06-24/result14.json"
-
 
 def parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description="Run the metric analysis with a filepath to a JSON of run result filepaths")
@@ -30,9 +28,8 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument(
 		"--output",
 		type=str,
-		default=None,
-		required=False,
-		help="Name to output JSON file for metrics summary (e.g., current_metrics_summary)",
+		default='metrics_summary_current',
+		help="Name to output JSON file for metrics summary (e.g., metrics_summary_current)",
 	)
 	return parser.parse_args()
 
@@ -67,5 +64,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-	
-	
