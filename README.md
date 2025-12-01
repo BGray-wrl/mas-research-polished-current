@@ -18,7 +18,11 @@ Finally you can assemble metrics into a datafile by replacing 'analysis_metrics_
     `uv run src/assemble_run_metrics.py --results configs/analysis_metrics_filepaths.json --output FILENAME`
 Metrics summary written to FILENAME
 
-And if that all works, out-of-the-box 
+Manually change the path multirun_analysis.py then run
+    `uv run src/mas_research/multirun_analysis.py`
+To make the dataset *.csv file (and update is definitely todo, this is a wip)
+
+And if that all works, manually changing the dataset path and
     `uv run experiments/experiments_and_visuals.py` 
 Should work as well, generating visuals. It will also work with my example datafile data/dataset.csv
 

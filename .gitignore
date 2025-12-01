@@ -1,9 +1,12 @@
 .env
 misc.py
+download_tv_bc.py
+*.jsonl
 __pycache__/
 .venv/
 results/*
 .DS_Store
+*/.DS_Store
 
 data/browse_comp_test.csv
 browse_comp_test.csv
@@ -13,3 +16,13 @@ misc-testing-archive/*
 
 paper/
 paper/*
+
+data/archive/*
+
+experiments/visuals/*
+
+prompts/test_memory.md
+
+results/*
+
+CLAUDE.md

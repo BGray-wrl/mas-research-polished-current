@@ -7,7 +7,7 @@ from utils.agent_visualizer import print_activity, visualize_conversation
 from utils.message_serializer import save_messages, load_messages, serialize_message
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, query # type: ignore
 
-from helpers import get_browsecomp_qas, get_one_browsecomp_question_answer, get_result_from_messages, load_prompt, save_result, export_to_md
+from helpers import get_browsecomp_qas, get_one_browsecomp_question_answer, get_result_from_messages, get_webwalker_qas, load_prompt, get_bc_plus_qas, save_result, export_to_md
 
 import asyncio
 import os
@@ -18,6 +18,8 @@ import time
 import argparse
 
 browsecomp_qa_pd_filepath = "data/browse_comp_test.csv"
+webwalker_qa_pd_filepath = "callanwu/WebWalkerQA"
+browsecomp_plus_qa_jsonl_filepath = "data/decrypted_browse_comp_plus.jsonl"
 
 
 # load_dotenv()
@@ -26,6 +28,7 @@ browsecomp_qa_pd_filepath = "data/browse_comp_test.csv"
 
 # haiku_45 = "claude-haiku-4-5-20251001"
 # sonnet_4 = "claude-sonnet-4-20250514"
+# opus_45 = "claude-opus-4-5-20251101"
 
 # filecode = "browsecomp"
 # tools = ["WebSearch", "Read", "Task", "Bash"]
@@ -110,11 +113,11 @@ browsecomp_qa_pd_filepath = "data/browse_comp_test.csv"
 #     result = {
 #         "question": question,
 #         "expected_answer": answer,
-#         "recieved_answer": response,
+#         "received_answer": response,
 #         "grade": grade,
 #         "messages": messages
 #     }
-#     print(result['question'],result['expected_answer'], result['recieved_answer'], result['grade'], len(result['messages']))
+#     print(result['question'],result['expected_answer'], result['received_answer'], result['grade'], len(result['messages']))
 
 #     save_result(result, filecode=filecode)
 
@@ -159,13 +162,13 @@ browsecomp_qa_pd_filepath = "data/browse_comp_test.csv"
 #         result = {
 #             "question": question,
 #             "expected_answer": answer,
-#             "recieved_answer": response,
+#             "received_answer": response,
 #             "grade": grade,
 #             "messages": messages
 #         }
 #         print(f"Question: {result['question']}")
 #         print(f"Expected Answer: {result['expected_answer']}")
-#         print(f"Received Answer: {result['recieved_answer']}")
+#         print(f"Received Answer: {result['received_answer']}")
 #         print(f"Grade: {result['grade']}")
 #         print(f"Messages Count: {len(result['messages'])}\n")
 
@@ -221,9 +224,12 @@ async def run_search_wrapper(model: str, system_prompt: str, subagent_prompt: st
     result = {
         "question": question,
         "expected_answer": answer,
-        "recieved_answer": response,
+        "received_answer": response,
         "evaluation": evaluation.get("evaluation", ""),
         "grade": evaluation.get("grade", "no"),
+        "correctness": evaluation.get("correctness", None),
+        "confidence": evaluation.get("confidence", None),
+        "extracted_final_answer": evaluation.get("extracted_final_answer", ""),
         "messages": messages
     }
 
@@ -231,20 +237,21 @@ async def run_search_wrapper(model: str, system_prompt: str, subagent_prompt: st
 
 
 
-
+## Connection Point from main_runner.py. Only if mode = "eval" ##
 async def main_browsecomp_eval(config: Dict[str, Any]):
 
     print(" \n\n=== Running Research Agent ===\n")
 
     debug_verbose = bool((config or {}).get("debug_verbose", False))
     filecode = (config or {}).get("filecode", "misc")
+
     model_to_use = config.get("model", "claude-haiku-4-5-20251001")
     tools_to_use = config["tools"]
 
     lead_researcher_prompt = load_prompt(config["system_prompt_filepath"]) 
     system_prompt_to_use = lead_researcher_prompt
 
-    subagent_pathway = config.get("research_subagent_prompt_filepath", None)
+    subagent_pathway = config.get("research_subagent_prompt_filepath", None) # If there is no subagent, use empty string. Code will handle this as case of no subagent.
     researcher_subagent_prompt = load_prompt(subagent_pathway) if subagent_pathway else ""
     researcher_subagent_prompt_to_use = researcher_subagent_prompt
 
@@ -253,8 +260,27 @@ async def main_browsecomp_eval(config: Dict[str, Any]):
     sem = asyncio.Semaphore(max_concurrency)
 
     offset = config.get("offset", 0)
-    qas = get_browsecomp_qas(browsecomp_qa_pd_filepath, config.get("num_questions", 1), offset)
-    print(f"Loaded {len(qas)} questions and answers.\n")
+    evalset = config.get("evalset", "browsecomp")
+
+    if evalset == "browsecomp":
+        qas = get_browsecomp_qas(browsecomp_qa_pd_filepath, config.get("num_questions", 1), offset)
+    if evalset == "dummy":
+        qas = [{
+            "question": config["dummy_question"],
+            "answer": config["dummy_answer"]
+        }]
+    if evalset == "webwalker":
+        qas = get_webwalker_qas(filepath = webwalker_qa_pd_filepath, num_rows=config.get("num_questions", 1), offset=offset)
+
+    if evalset == "browsecomp-plus":
+        qas = get_bc_plus_qas(filepath = browsecomp_plus_qa_jsonl_filepath, n=config.get("num_questions", 1), offset=offset)
+        bcqids = [qa.get("query_id", "") for qa in qas]
+        print(qas[0:2])  #TODO REMOVE DELETEME
+        print(f"BrowseComp Plus Query IDs being used: {bcqids}") #TODO REMOVE DELETEME
+
+    if debug_verbose:
+        print(f"Loaded {len(qas)} questions and answers.\n")
+        print(f"First QA: {qas[0]}\n")
 
 
     async def sem_wrapper(qa):
@@ -273,17 +299,37 @@ async def main_browsecomp_eval(config: Dict[str, Any]):
 
     results = await asyncio.gather(*tasks)
 
+    filepaths = {}
+
     for idx, result in enumerate(results):
         print("\n----- Result -----\n")
         print(f"Question: {result['question']}")
         print(f"Expected Answer: {result['expected_answer']}")
-        print(f"Received Answer: {result['recieved_answer']}"if len(result['recieved_answer'])<100 else f"Received Answer: {result['recieved_answer'][:100]}...[truncated]")
+        print(f"Received Answer: {result['received_answer']}"if len(result['received_answer'])<100 else f"Received Answer: {result['received_answer'][:100]}...[truncated]")
         print(f"Grade: {result['grade']}")
+        print(f"Correctness: {result.get('correctness', 'N/A')}")
         print(f"Messages Count: {len(result['messages'])}\n\n")
 
-        save_result(result, filecode=filecode, num=str(idx+offset))
-        export_to_md(result_text=result['recieved_answer'], filecode=filecode, num=str(idx+offset)) # type: ignore
+        path = save_result(result, filecode=filecode, num=(str(idx+offset) if not evalset=="browsecomp-plus" else bcqids[idx]))
+
+        if filecode not in filepaths:
+            filepaths[filecode] = []
+        filepaths[filecode].append(path)
+
+        export_to_md(
+            question = result['question'],
+            expected_answer=result['expected_answer'],
+            grade = result['grade'],
+            correctness = result.get('correctness', 'N/A'),
+            result_text=result['received_answer'], 
+            filecode=filecode, 
+            num=str(idx+offset)
+            ) # type: ignore
         time.sleep(1.2)  # To ensure unique filenames formerly, idk why now
+
+    with open(f"results/{filecode}/paths.json", "w") as f:
+        json.dump(filepaths, f, indent=2)
+    
     return results
 
 

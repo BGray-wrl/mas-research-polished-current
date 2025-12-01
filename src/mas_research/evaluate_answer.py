@@ -37,8 +37,10 @@ reasoning: Explain why the extracted_final_answer is correct or incorrect based 
 
 correct: Answer 'yes' if extracted_final_answer matches the [correct_answer] given above, or is within a small margin of error for numerical problems. Answer 'no' otherwise, i.e. if there if there is any inconsistency, ambiguity, non-equivalency, or if the extracted answer is incorrect.
 
+correctness_score: Put an integer from 0 to 10 indicating how close the extracted_final_answer is to the [correct_answer], where 0 = completely wrong or missing, 5 = partially correct with major errors or omissions, and 10 = fully correct with at most trivial differences.
 
 confidence: The extracted confidence score between 0% and 100% from [response]. Put 100 if there is no confidence score available.
+
 """.strip()
 
 CHOICE_STRINGS = ["yes", "no"]
@@ -67,12 +69,34 @@ def evaluate_answer(question: str, correct_answer: str, response: str) -> dict:
     sampler_response = grader_model(prompt_messages)
     grading_response = sampler_response.response_text
 
-    match = re.search(r"correct: (yes|no)", grading_response)
+    # Parse fields from grader response
+    extracted_match = re.search(
+        r"extracted[_\s-]*final[_\s-]*answer\s*:\s*(.+)",
+        grading_response,
+        flags=re.IGNORECASE,
+    )
+    extracted_final_answer = None
+    if extracted_match:
+        extracted_final_answer = extracted_match.group(1).strip().splitlines()[0].strip()
+        # Normalize common placeholders and strip surrounding quotes
+        if extracted_final_answer.lower() in {"none", "null", "n/a"}:
+            extracted_final_answer = None
+        elif (extracted_final_answer.startswith('"') and extracted_final_answer.endswith('"')) or (
+            extracted_final_answer.startswith("'") and extracted_final_answer.endswith("'")
+        ):
+            extracted_final_answer = extracted_final_answer[1:-1].strip()
+
+    match = re.search(r"correct:\s*(yes|no)", grading_response, flags=re.IGNORECASE)
+    correctness_match = re.search(r"correctness_score:\s*([0-9]+(?:\.[0-9]+)?)", grading_response, flags=re.IGNORECASE)
+    confidence_match = re.search(r"confidence:\s*([0-9]+(?:\.[0-9]+)?)\s*%?", grading_response, flags=re.IGNORECASE)
 
     eval = {
         "evaluation": grading_response,
         "grade": match.group(1).lower() if match else "no",
-        }
+        "correctness": float(correctness_match.group(1)) if correctness_match else None,
+        "confidence": float(confidence_match.group(1)) if confidence_match else None,
+        "extracted_final_answer": extracted_final_answer,
+    }
 
     return eval
 

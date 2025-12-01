@@ -41,16 +41,20 @@ def get_result_from_messages(messages = None, filepath = None):
     return None
 
 
-filepath = "results/dummy-multiagent/current.json"
-filepath = "results/eval-singleagent/Nov-09-06-24/result14.json"
-filepath = "results/eval-multiagent/Nov-09-06-54/result12.json"
+test_local_filepath = "results/dummy-multiagent/current.json"
+test_local_filepath = "results/eval-singleagent/Nov-09-06-24/result14.json"
+test_local_filepath = "results/eval-multiagent/Nov-09-06-54/result12.json"
+test_local_filepath = "results/ww-test-multiagent/Nov-17-10-37/result0.json"
+test_local_filepath = "results/ww-eval-multiagent/Nov-25-23-31/result76.json"
+
+
 
 
 
 
 if __name__ == "__main__":
     # Load the data as a dict, not just messages
-    with open(filepath, 'r') as f:
+    with open(test_local_filepath, 'r') as f:
         data = json.load(f)
     
     # Analyze and print metrics
@@ -67,5 +71,6 @@ if __name__ == "__main__":
     print(f"  Duration: {summary['duration_seconds']:.1f}s")
     print(f"  Tokens: {summary['total_tokens']:,}")
     print(f"  Grade: {summary['grade']}")
+    print(f"  Correctness Score: {summary['correctness']}/10.0" if summary.get('correctness', None) is not None else "")
 
 

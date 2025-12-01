@@ -1,8 +1,8 @@
 # Minimal config to run the lead researcher with the default settings
 mode: eval
+evalset: browsecomp
 
 # Index into the BrowseComp dataset (preserves existing logic)
-question_index: 0
 num_questions: 5
 offset: 10
 print_question: true

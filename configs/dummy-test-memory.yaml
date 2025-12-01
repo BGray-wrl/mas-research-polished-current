@@ -5,18 +5,18 @@ evalset: dummy
 # Optional overrides (safe defaults are used if omitted)
 debug_verbose: true
 # filecode: dummy-multiagent
-filecode: dummy-singleagent
+filecode: dummy-sg-memory
 
 # Path to prompt files
 # system_prompt_filepath: "prompts/dummy_leadagent.md"
 # research_subagent_prompt_filepath: "prompts/dummy_subagent.md"
 
-system_prompt_filepath: "prompts/dummy_subagent.md"
+system_prompt_filepath: "prompts/test_memory.md"
 research_subagent_prompt_filepath: ""
 
-model : "claude-haiku-4-5-20251001"
+# model : "claude-opus-4-5-20251101"
 # dummy_system_prompt: "You are a lazy professional researcher. Your goal is to find the answer by delegating tasks to your subagents as much as possible. Use the 'researcher' subagent."
 # dummy_researcher_prompt: "You are a diligent subagent researcher. Your goal is to find accurate information to help the lead researcher in accordance with their instructions. Use web search and reading tools as needed."
-dummy_question: "Who won the NYC mayoral election in 2025? Use the researcher subagent to find out."
-dummy_answer: "Zohran Mamdani"
-tools: ["Read", "WebSearch", "WebFetch"]
+dummy_question: "Choose some nonspecific 4-word sequence and store it in memory. Make sure this is retrievable later, even after the session is competely shut down."
+dummy_answer: "N/A"
+tools: ["Read", "Write", "WebSearch", "WebFetch"]
