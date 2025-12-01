@@ -242,7 +242,7 @@ def print_metrics_report(metrics: Dict[str, Any]) -> None:
     print(f"Question: {metrics['overview']['question'][:]}...")
     print(f"Expected Answer: {metrics['overview']['expected_answer']}")
     print(f"Received Answer: {metrics['overview']['received_answer'][:50]}...")
-    print(f"Extracted Final Answer: {metrics['overview']['extracted_final_answer'][:75]}")
+    print(f"Extracted Final Answer: {metrics['overview']['extracted_final_answer'][:75]}" if metrics['overview']['extracted_final_answer'] is not None else "")
     print(f"Evaluation: {metrics['overview']['evaluation'][:50]}...")
     print(f"Grade: {metrics['overview']['grade']}")
     print(f"Correctness: {metrics['overview']['correctness']}/10.0" if metrics['overview'].get('correctness', None) is not None else "")

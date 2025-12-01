@@ -7,9 +7,41 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
+from browsecomp_openai.samplers import ChatCompletionSampler
 
-# Load embedding model once at module level
+import re
+
+
+from dotenv import load_dotenv  # type: ignore
+import os
+
+load_dotenv()
+
+
 _embedding_model = None
+_llm_client = None
+_llm_client_model = None
+
+SUBAGENT_GRADER_MODEL = "gpt-5-mini-2025-08-07"
+SUBAGENT_GRADER_TEMPLATE = """
+Judge whether the following [response] resolves the [subtask] and rate how well it was completed.
+
+[subtask]: {subtask}
+
+[response]: {response}
+
+Your judgement must follow exactly this format:
+
+solved: yes|no
+quality_score: 0.0-10.0
+analysis: {{brief justification referencing the subtask requirements only}}
+
+Guidelines:
+- Answer solved: yes only if no meaningful work remains; otherwise answer no.
+- quality_score should reward completeness, clarity, autonomy, and initiative even when solved is yes.
+- Use the full 0-10 range (decimals allowed). A 10 denotes flawless execution without caveats.
+""".strip()
+
 
 def get_embedding_model():
     """Lazy load the embedding model."""
@@ -17,6 +49,14 @@ def get_embedding_model():
     if _embedding_model is None:
         _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
     return _embedding_model
+
+
+def get_llm_client(model_name: str = SUBAGENT_GRADER_MODEL):
+    global _llm_client, _llm_client_model
+    if _llm_client is None or _llm_client_model != model_name:
+        _llm_client = ChatCompletionSampler(model=model_name)
+        _llm_client_model = model_name
+    return _llm_client
 
 
 def calculate_subagent_similarity(initializing_prompts: List[str]) -> float:
@@ -47,7 +87,7 @@ def calculate_subagent_similarity(initializing_prompts: List[str]) -> float:
     return float(np.mean(upper_triangle))
 
 
-def calculate_subagent_success(prompt: str, response: str, threshold: float = 0.5) -> Tuple[float, int]:
+def calculate_subagent_success_cos(prompt: str, response: str, threshold: float = 0.5) -> Tuple[float, int]:
     """
     Calculate success metric for a single subagent based on its prompt and response.
     Measures cosine similarity between prompt and response embeddings.
@@ -61,6 +101,8 @@ def calculate_subagent_success(prompt: str, response: str, threshold: float = 0.
     Returns:
         Tuple[float, int]: (similarity score 0.0-1.0, binary completion 0 or 1)
     """
+    print("Warning: Using cosine similarity for subagent success metric. Consider using LLM-based grading instead.")
+    print(f"Prompt: {prompt}  \n  Response: {response}\n")
     model = get_embedding_model()
     
     # Get embeddings
@@ -75,6 +117,51 @@ def calculate_subagent_success(prompt: str, response: str, threshold: float = 0.
     
     return float(similarity), completed
 
+
+def calculate_subagent_success(
+    prompt: str,
+    response: str,
+    threshold: float = 0.5,
+    model: str = SUBAGENT_GRADER_MODEL
+) -> Tuple[float, int]:
+    """
+    Use an LLM grader (ChatCompletionSampler) to determine solved vs. quality (0-10).
+    Returns (quality_score, solved_flag).
+    """
+    print(prompt,'\n\n')
+    _ = threshold  # retained for signature compatibility
+    if not prompt or not response:
+        return 0.0, 0
+
+    grader = get_llm_client(model)
+    grader_prompt = SUBAGENT_GRADER_TEMPLATE.format(subtask=prompt, response=response)
+    prompt_messages = [grader._pack_message(content=grader_prompt, role="user")]
+
+    try:
+        grading_response = grader(prompt_messages).response_text.strip()
+    except Exception:
+        return 0.0, 0
+
+    solved = 0
+    quality = 0.0
+
+    solved_match = re.search(r"solved\s*:\s*(yes|no|1|0)", grading_response, flags=re.IGNORECASE)
+    if solved_match:
+        solved = 1 if solved_match.group(1).lower() in {"yes", "1"} else 0
+
+    quality_match = re.search(
+        r"quality[_\s-]*score\s*:\s*([0-9]+(?:\.[0-9]+)?)",
+        grading_response,
+        flags=re.IGNORECASE
+    )
+    if quality_match:
+        try:
+            quality = float(quality_match.group(1))
+        except ValueError:
+            quality = 0.0
+
+    quality = max(0.0, min(10.0, quality))
+    return quality, solved
 
 
 def normalize_grade(grade: Any) -> int:
@@ -350,7 +437,7 @@ def save_dataset(dataset: pd.DataFrame, output_path: str):
 
 if __name__ == "__main__":
     # Example usage
-    path = "runww25sg"
+    path = "ww100"
     results_path = f"data/{path}.json"
     dataset = load_and_create_dataset(results_path)
     

@@ -13,6 +13,10 @@ import pandas as pd # type: ignore
 from datetime import datetime
 from typing import Any, Dict
 
+from pathlib import Path
+import tempfile
+
+
 
 
 # ## 'simple' mode: single agent with query() only. Deprecated.
@@ -31,15 +35,49 @@ from typing import Any, Dict
 #     ):
 #         print(message)
 
+def create_temp_agent_workspace(claude_md_content: str = "# Agent Memory\n", uniq = "") -> str:
+    """
+    Create a temporary directory with a CLAUDE.md file.
+    Returns the path to the temporary directory.
+    """
+    # Create temporary directory
+    temp_dir = tempfile.mkdtemp(prefix=f"agent_run_{uniq}")
+    
+    # Create CLAUDE.md file
+    claude_md_path = Path(temp_dir) / "CLAUDE.md"
+    claude_md_path.write_text(claude_md_content)
+    
+    return temp_dir
+
+
+def create_agent_workspace(claude_md_content: str = "# Agent Memory\n", uniq = "") -> str:
+    """
+    Create a temporary directory with a CLAUDE.md file.
+    Returns the path to the temporary directory.
+    """
+    # Create directory
+    workspace_dir = Path(f"results/workspaces/agent_run_{uniq}")
+    workspace_dir.mkdir(exist_ok=True)
+    
+    # Create CLAUDE.md file
+    claude_md_path = workspace_dir / "CLAUDE.md"
+    claude_md_path.write_text(claude_md_content)
+    
+    return str(workspace_dir)
+    
+
 
 
 async def run_one_search(model: str, system_prompt: str, subagent_prompt: str, question: str, tools: list, debug_verbose: bool = False):
+    
     messages = []
+    workspace = create_agent_workspace(uniq = (question[:3] if len(question) > 3 else 'X'+question)+str(datetime.now().strftime("%S")))
 
     async with ClaudeSDKClient(
         options=ClaudeAgentOptions(
             model=model,
-            # cwd="research_agent",
+            setting_sources=["project"],
+            cwd=workspace,
             system_prompt=system_prompt,
             allowed_tools=tools,
             max_turns=50,
@@ -60,7 +98,10 @@ async def run_one_search(model: str, system_prompt: str, subagent_prompt: str, q
             
             if debug_verbose:
                 print('\n', msg)
-    
+
+    print("CWD")
+    print(os.getcwd())
+
     return messages
 
 

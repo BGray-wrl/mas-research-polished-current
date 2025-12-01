@@ -75,6 +75,24 @@ def get_browsecomp_qas(filepath, num_rows=None, offset=4):
         })
 
     return questions_and_answers
+
+
+def get_bc_plus_qas(filepath = "data/decrypted_browse_comp_plus.jsonl", n=0, offset=0):
+
+    # load jsonl file decrypted from current path in working directory
+    questions_and_answers = []
+    with open(filepath, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+        for idx in range(offset, offset + n):
+            sample = json.loads(lines[idx])
+            questions_and_answers.append({
+                "question": sample.get("query", ""),
+                "answer": sample.get("answer", ""),
+                "query_id": sample.get("query_id", "")
+            })
+
+    return questions_and_answers
     
 
 def get_webwalker_qas(filepath = "callanwu/WebWalkerQA", num_rows=None, offset=4):

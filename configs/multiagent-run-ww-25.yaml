@@ -3,10 +3,10 @@ mode: eval
 evalset: webwalker
 
 # Index into the BrowseComp dataset (preserves existing logic)
-num_questions: 75
-offset: 50
+num_questions: 25
+offset: 25
 print_question: true
-debug_verbose: false
+debug_verbose: true
 tools: ["WebSearch", "WebFetch", "Read", "Task", "Bash"]
 
 # filecode: ww-eval-singleagent  ## evalset-evaltype-agentsetup ## ||  ww/bc/gaia - eval/dummy/test - singleagent/multiagent

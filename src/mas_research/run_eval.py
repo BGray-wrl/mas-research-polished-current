@@ -7,7 +7,7 @@ from utils.agent_visualizer import print_activity, visualize_conversation
 from utils.message_serializer import save_messages, load_messages, serialize_message
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, query # type: ignore
 
-from helpers import get_browsecomp_qas, get_one_browsecomp_question_answer, get_result_from_messages, get_webwalker_qas, load_prompt, save_result, export_to_md
+from helpers import get_browsecomp_qas, get_one_browsecomp_question_answer, get_result_from_messages, get_webwalker_qas, load_prompt, get_bc_plus_qas, save_result, export_to_md
 
 import asyncio
 import os
@@ -19,7 +19,7 @@ import argparse
 
 browsecomp_qa_pd_filepath = "data/browse_comp_test.csv"
 webwalker_qa_pd_filepath = "callanwu/WebWalkerQA"
-
+browsecomp_plus_qa_jsonl_filepath = "data/decrypted_browse_comp_plus.jsonl"
 
 
 # load_dotenv()
@@ -28,6 +28,7 @@ webwalker_qa_pd_filepath = "callanwu/WebWalkerQA"
 
 # haiku_45 = "claude-haiku-4-5-20251001"
 # sonnet_4 = "claude-sonnet-4-20250514"
+# opus_45 = "claude-opus-4-5-20251101"
 
 # filecode = "browsecomp"
 # tools = ["WebSearch", "Read", "Task", "Bash"]
@@ -271,6 +272,12 @@ async def main_browsecomp_eval(config: Dict[str, Any]):
     if evalset == "webwalker":
         qas = get_webwalker_qas(filepath = webwalker_qa_pd_filepath, num_rows=config.get("num_questions", 1), offset=offset)
 
+    if evalset == "browsecomp-plus":
+        qas = get_bc_plus_qas(filepath = browsecomp_plus_qa_jsonl_filepath, n=config.get("num_questions", 1), offset=offset)
+        bcqids = [qa.get("query_id", "") for qa in qas]
+        print(qas[0:2])  #TODO REMOVE DELETEME
+        print(f"BrowseComp Plus Query IDs being used: {bcqids}") #TODO REMOVE DELETEME
+
     if debug_verbose:
         print(f"Loaded {len(qas)} questions and answers.\n")
         print(f"First QA: {qas[0]}\n")
@@ -303,7 +310,7 @@ async def main_browsecomp_eval(config: Dict[str, Any]):
         print(f"Correctness: {result.get('correctness', 'N/A')}")
         print(f"Messages Count: {len(result['messages'])}\n\n")
 
-        path = save_result(result, filecode=filecode, num=str(idx+offset))
+        path = save_result(result, filecode=filecode, num=(str(idx+offset) if not evalset=="browsecomp-plus" else bcqids[idx]))
 
         if filecode not in filepaths:
             filepaths[filecode] = []
