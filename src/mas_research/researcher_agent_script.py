@@ -80,7 +80,7 @@ async def run_one_search(model: str, system_prompt: str, subagent_prompt: str, q
             cwd=workspace,
             system_prompt=system_prompt,
             allowed_tools=tools,
-            max_turns=50,
+            max_turns=50, # max_turns set to 25 for bc and bcp, 50 for wwqa
             agents = {
             'research_subagent' : AgentDefinition(
                 description="A fully capable researcher that can search the web.",

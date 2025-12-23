@@ -39,7 +39,6 @@ def experiment_1_coordination_success_analysis(df: pd.DataFrame) -> dict:
         'subagent_similarity', 
         'subagent_success_avg',
         'subagents_completed_pct',
-        'total_subagent_calls'
     ]
     
     # Activity features that may affect coordination
@@ -117,7 +116,7 @@ def experiment_1_coordination_success_analysis(df: pd.DataFrame) -> dict:
     
     print(f"\nModel Accuracy: {accuracy:.2%}")
     print(f"\nTop Coordination Features for Success:")
-    print(coefficients.head(8).to_string(index=False))
+    print(coefficients.head(10).to_string(index=False))
     
     return {
         'model': model,
@@ -141,7 +140,6 @@ def experiment_2_resource_efficiency_analysis(df: pd.DataFrame) -> dict:
     # Features related to multi-agent coordination overhead
     predictors = [
         'num_subagents',
-        'total_subagent_calls', 
         'subagent_messages',
         'num_turns',
         'total_tool_calls',
@@ -192,7 +190,7 @@ def experiment_2_resource_efficiency_analysis(df: pd.DataFrame) -> dict:
         print(f"RMSE: {rmse:.3f}")
         print(f"Mean {target}: {y.mean():.3f}")
         print(f"\nTop Predictors:")
-        print(coefficients.head().to_string(index=False))
+        print(coefficients.head(10).to_string(index=False))
         
         results[target] = {
             'model': model,
@@ -221,7 +219,6 @@ def experiment_3_coordination_patterns_correlation(df: pd.DataFrame, output_dir:
         'subagent_similarity',
         'subagent_success_avg',
         'subagents_completed_pct',
-        'total_subagent_calls',
         'subagent_messages',
         'lead_agent_messages'
     ]
@@ -319,7 +316,6 @@ def experiment_4_operational_clustering(df: pd.DataFrame, output_dir: str = 'exp
         'num_subagents',
         'subagent_messages',
         'lead_agent_messages',
-        'total_subagent_calls',
         'num_turns',
         'total_tool_calls',
         'websearch_calls',
@@ -330,7 +326,8 @@ def experiment_4_operational_clustering(df: pd.DataFrame, output_dir: str = 'exp
         'subagents_completed_pct',
         'cost_usd',
         'time_seconds',
-        'total_tokens'
+        'total_tokens', 
+        'accuracy'
     ]
     
     # Clean data
@@ -382,7 +379,7 @@ def experiment_4_operational_clustering(df: pd.DataFrame, output_dir: str = 'exp
     
     # Analyze cluster characteristics
     print(f"\nCluster Characteristics:")
-    cluster_means = df_clean.groupby('cluster')[available_vars[:6]].mean()
+    cluster_means = df_clean.groupby('cluster')[available_vars].mean()
     print(cluster_means.to_string())
     
     # Create visualization
@@ -468,7 +465,7 @@ def experiment_5_subagent_coordination_dynamics(df: pd.DataFrame, output_dir: st
     
     # Focus on coordination-specific relationships
     coord_metrics = ['num_subagents', 'subagent_similarity', 'subagent_success_avg', 
-                     'subagents_completed_pct', 'total_subagent_calls']
+                     'subagents_completed_pct']
     
     available_metrics = [m for m in coord_metrics if m in df.columns and df[m].notna().sum() > 0]
     
@@ -484,6 +481,15 @@ def experiment_5_subagent_coordination_dynamics(df: pd.DataFrame, output_dir: st
     
     # Plot coordination metrics vs accuracy
     if 'accuracy' in df.columns:
+        # Define x-jitter strengths based on metric ranges
+        # num_subagents: 1-3 (range 2), subagent_similarity: 0.4-1 (range 0.6), subagent_success_avg: 0-10 (range 10)
+        x_jitter_map = {
+            'num_subagents': 0.08,           # ~4% of range 2
+            'subagent_similarity': 0.02,      # ~3% of range 0.6
+            'subagent_success_avg': 0.3,      # ~3% of range 10
+            'subagents_completed_pct': 0.03   # ~3% of range 1
+        }
+        
         for metric in available_metrics[:3]:
             ax = axes[plot_idx]
             
@@ -491,14 +497,25 @@ def experiment_5_subagent_coordination_dynamics(df: pd.DataFrame, output_dir: st
             success = df[df['accuracy'] == 1]
             failure = df[df['accuracy'] == 0]
             
-            ax.scatter(success[metric], [1]*len(success), 
+            # Add jitter to both x and y coordinates to prevent overlap
+            y_jitter_strength = 0.08
+            x_jitter_strength = x_jitter_map.get(metric, 0.05)
+            
+            success_y_jitter = 1 + np.random.uniform(-y_jitter_strength, y_jitter_strength, len(success))
+            failure_y_jitter = 0 + np.random.uniform(-y_jitter_strength, y_jitter_strength, len(failure))
+            
+            success_x_jitter = success[metric] + np.random.uniform(-x_jitter_strength, x_jitter_strength, len(success))
+            failure_x_jitter = failure[metric] + np.random.uniform(-x_jitter_strength, x_jitter_strength, len(failure))
+            
+            ax.scatter(success_x_jitter, success_y_jitter, 
                       c='green', s=100, alpha=0.6, label='Success', marker='o')
-            ax.scatter(failure[metric], [0]*len(failure), 
+            ax.scatter(failure_x_jitter, failure_y_jitter, 
                       c='red', s=100, alpha=0.6, label='Failure', marker='x')
             
             ax.set_xlabel(metric.replace('_', ' ').title(), fontsize=10)
             ax.set_ylabel('Accuracy', fontsize=10)
             ax.set_yticks([0, 1])
+            ax.set_ylim(-0.15, 1.15)
             ax.set_title(f'{metric.replace("_", " ").title()} vs Success', fontsize=11)
             ax.legend()
             ax.grid(True, alpha=0.3)
@@ -511,7 +528,12 @@ def experiment_5_subagent_coordination_dynamics(df: pd.DataFrame, output_dir: st
             ax = axes[plot_idx]
             
             valid_data = df[[metric, 'cost_usd']].dropna()
-            scatter = ax.scatter(valid_data[metric], valid_data['cost_usd'],
+            
+            # Add jitter to x-coordinates to prevent overlap
+            x_jitter_strength = x_jitter_map.get(metric, 0.05)
+            x_jittered = valid_data[metric] + np.random.uniform(-x_jitter_strength, x_jitter_strength, len(valid_data))
+            
+            scatter = ax.scatter(x_jittered, valid_data['cost_usd'],
                                c=valid_data['cost_usd'], cmap='viridis',
                                s=100, alpha=0.6, edgecolors='black')
             
@@ -576,11 +598,11 @@ def run_all_multiagent_experiments(csv_path: str, output_dir: str = 'experiments
     # Run experiments
     results = {}
     
-    results['experiment_1'] = experiment_1_coordination_success_analysis(df)
-    results['experiment_2'] = experiment_2_resource_efficiency_analysis(df)
-    results['experiment_3'] = experiment_3_coordination_patterns_correlation(df, output_dir)
+    # results['experiment_1'] = experiment_1_coordination_success_analysis(df)
+    # results['experiment_2'] = experiment_2_resource_efficiency_analysis(df)
+    # results['experiment_3'] = experiment_3_coordination_patterns_correlation(df, output_dir)
     results['experiment_4'] = experiment_4_operational_clustering(df, output_dir)
-    results['experiment_5'] = experiment_5_subagent_coordination_dynamics(df, output_dir)
+    # results['experiment_5'] = experiment_5_subagent_coordination_dynamics(df, output_dir)
     
     print("\n" + "="*80)
     print("ALL MULTI-AGENT EXPERIMENTS COMPLETE")

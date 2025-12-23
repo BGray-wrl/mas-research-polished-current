@@ -1,7 +1,7 @@
 ## File largely written by GitHub Copilot running Claude Sonnet 4.5
 
 import json
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -10,6 +10,7 @@ from sentence_transformers import SentenceTransformer
 from browsecomp_openai.samplers import ChatCompletionSampler
 
 import re
+import time
 
 
 from dotenv import load_dotenv  # type: ignore
@@ -21,6 +22,15 @@ load_dotenv()
 _embedding_model = None
 _llm_client = None
 _llm_client_model = None
+
+# Track evaluation failures globally
+EVAL_STATS = {
+    'total_attempted': 0,
+    'successful': 0,
+    'api_failures': 0,
+    'parse_failures': 0,
+    'empty_inputs': 0
+}
 
 SUBAGENT_GRADER_MODEL = "gpt-5-mini-2025-08-07"
 SUBAGENT_GRADER_TEMPLATE = """
@@ -102,7 +112,7 @@ def calculate_subagent_success_cos(prompt: str, response: str, threshold: float 
         Tuple[float, int]: (similarity score 0.0-1.0, binary completion 0 or 1)
     """
     print("Warning: Using cosine similarity for subagent success metric. Consider using LLM-based grading instead.")
-    print(f"Prompt: {prompt}  \n  Response: {response}\n")
+    # print(f"Prompt: {prompt}  \n  Response: {response}\n")
     model = get_embedding_model()
     
     # Get embeddings
@@ -122,32 +132,66 @@ def calculate_subagent_success(
     prompt: str,
     response: str,
     threshold: float = 0.5,
-    model: str = SUBAGENT_GRADER_MODEL
-) -> Tuple[float, int]:
+    model: str = SUBAGENT_GRADER_MODEL,
+    max_retries: int = 3
+) -> Tuple[Optional[float], Optional[int]]:
     """
-    Use an LLM grader (ChatCompletionSampler) to determine solved vs. quality (0-10).
-    Returns (quality_score, solved_flag).
+    Use an LLM grader to determine solved vs. quality (0-10).
+    Returns (quality_score, solved_flag) or (None, None) if evaluation fails.
+
+    Retries on API failures with exponential backoff.
+    Tracks failures vs legitimate low scores via EVAL_STATS.
     """
-    print(prompt,'\n\n')
+    # print(prompt,'\n\n')
     _ = threshold  # retained for signature compatibility
+
+    EVAL_STATS['total_attempted'] += 1
+
     if not prompt or not response:
-        return 0.0, 0
+        EVAL_STATS['empty_inputs'] += 1
+        return None, None  # Return None instead of 0 to indicate failure
 
     grader = get_llm_client(model)
     grader_prompt = SUBAGENT_GRADER_TEMPLATE.format(subtask=prompt, response=response)
     prompt_messages = [grader._pack_message(content=grader_prompt, role="user")]
 
-    try:
-        grading_response = grader(prompt_messages).response_text.strip()
-    except Exception:
-        return 0.0, 0
+    # Retry logic with exponential backoff
+    grading_response = None
+    for attempt in range(max_retries):
+        try:
+            grading_response = grader(prompt_messages).response_text.strip()
+            break  # Success, exit retry loop
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                print(f"API error (attempt {attempt+1}/{max_retries}): {e}. Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                # Final attempt failed
+                EVAL_STATS['api_failures'] += 1
+                print(f"API error after {max_retries} attempts: {e}")
+                return None, None  # Return None to indicate failure
 
+    if not grading_response:
+        EVAL_STATS['api_failures'] += 1
+        return None, None
+
+    # Parse response - try multiple patterns for robustness
     solved = 0
     quality = 0.0
 
+    # Pattern 1: Standard format
     solved_match = re.search(r"solved\s*:\s*(yes|no|1|0)", grading_response, flags=re.IGNORECASE)
     if solved_match:
         solved = 1 if solved_match.group(1).lower() in {"yes", "1"} else 0
+
+    # Pattern 2: Try alternative patterns (handles non-English or variations)
+    if not solved_match:
+        # Try just finding yes/no/1/0 near "solved"
+        if re.search(r"solved.*?(yes|1)", grading_response[:200], flags=re.IGNORECASE | re.DOTALL):
+            solved = 1
+        elif re.search(r"solved.*?(no|0)", grading_response[:200], flags=re.IGNORECASE | re.DOTALL):
+            solved = 0
 
     quality_match = re.search(
         r"quality[_\s-]*score\s*:\s*([0-9]+(?:\.[0-9]+)?)",
@@ -158,8 +202,15 @@ def calculate_subagent_success(
         try:
             quality = float(quality_match.group(1))
         except ValueError:
-            quality = 0.0
+            pass
 
+    # If we couldn't parse anything meaningful, it's a parse failure
+    if quality == 0.0 and solved == 0 and not (solved_match or quality_match):
+        EVAL_STATS['parse_failures'] += 1
+        print(f"Parse failure - response: {grading_response[:200]}")
+        return None, None
+
+    EVAL_STATS['successful'] += 1
     quality = max(0.0, min(10.0, quality))
     return quality, solved
 
@@ -298,15 +349,15 @@ def extract_run_metrics(metrics: Dict[str, Any]) -> Dict[str, Any]:
 def calculate_subagent_metrics(run_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Calculate subagent similarity and success metrics for a run.
-    
+
     Args:
         run_data: Output from extract_run_metrics
-        
+
     Returns:
         Dictionary with subagent_similarity, subagent_success_avg, completion metrics
     """
     result = {}
-    
+
     # Similarity metric
     if len(run_data['subagent_prompts']) > 0:
         try:
@@ -317,20 +368,25 @@ def calculate_subagent_metrics(run_data: Dict[str, Any]) -> Dict[str, Any]:
             result['subagent_similarity'] = None
     else:
         result['subagent_similarity'] = None
-    
+
     # Success metrics (average across all subagents)
     if len(run_data['subagent_prompts']) > 0:
         success_scores = []
         completions = []
-        
-        for prompt, response in zip(run_data['subagent_prompts'], run_data['subagent_responses']):
+
+        num_subagents = len(run_data['subagent_prompts'])
+        for idx, (prompt, response) in enumerate(zip(run_data['subagent_prompts'], run_data['subagent_responses']), 1):
+            # Progress indicator
+            print(f"[Progress] Evaluating subagent {EVAL_STATS['total_attempted']+1} (run subagent {idx}/{num_subagents})...", flush=True)
             try:
                 score, completed = calculate_subagent_success(prompt, response)
-                success_scores.append(score)
-                completions.append(completed)
+                # Skip None values (evaluation failures) - don't include in averages
+                if score is not None and completed is not None:
+                    success_scores.append(score)
+                    completions.append(completed)
             except NotImplementedError:
                 pass
-        
+
         result['subagent_success_avg'] = sum(success_scores) / len(success_scores) if success_scores else None
         result['subagents_completed'] = sum(completions) if completions else 0
         result['subagents_completed_pct'] = sum(completions) / len(completions) if completions else None
@@ -338,7 +394,7 @@ def calculate_subagent_metrics(run_data: Dict[str, Any]) -> Dict[str, Any]:
         result['subagent_success_avg'] = None
         result['subagents_completed'] = 0
         result['subagents_completed_pct'] = None
-    
+
     return result
 
 
@@ -427,7 +483,7 @@ def load_and_create_dataset(results_path: str) -> pd.DataFrame:
 def save_dataset(dataset: pd.DataFrame, output_path: str):
     """
     Save dataset to CSV file.
-    
+
     Args:
         dataset: Dataset DataFrame
         output_path: Path to save CSV file
@@ -435,12 +491,35 @@ def save_dataset(dataset: pd.DataFrame, output_path: str):
     dataset.to_csv(output_path, index=False)
 
 
+def print_evaluation_stats():
+    """Print statistics about subagent evaluation failures."""
+    print("\n" + "=" * 80)
+    print("SUBAGENT EVALUATION STATISTICS")
+    print("=" * 80)
+    print(f"Total subagents attempted:     {EVAL_STATS['total_attempted']}")
+    print(f"Successfully evaluated:        {EVAL_STATS['successful']}")
+    print(f"Failed - API errors:           {EVAL_STATS['api_failures']}")
+    print(f"Failed - Parse errors:         {EVAL_STATS['parse_failures']}")
+    print(f"Skipped - Empty inputs:        {EVAL_STATS['empty_inputs']}")
+
+    failed_total = EVAL_STATS['api_failures'] + EVAL_STATS['parse_failures'] + EVAL_STATS['empty_inputs']
+    if EVAL_STATS['total_attempted'] > 0:
+        success_rate = 100 * EVAL_STATS['successful'] / EVAL_STATS['total_attempted']
+        failure_rate = 100 * failed_total / EVAL_STATS['total_attempted']
+        print(f"\nSuccess rate:                  {success_rate:.1f}%")
+        print(f"Failure rate:                  {failure_rate:.1f}%")
+    print("=" * 80)
+
+
 if __name__ == "__main__":
     # Example usage
     path = "ww100"
     results_path = f"data/{path}.json"
     dataset = load_and_create_dataset(results_path)
-    
+
+    # Print evaluation statistics (failures vs legitimate scores)
+    print_evaluation_stats()
+
     # Print summary
     print("\nDataset Summary:")
     print("=" * 80)
@@ -456,11 +535,11 @@ if __name__ == "__main__":
         print(f"  Avg tokens: {subset['total_tokens'].mean():.0f}")
         print(f"  Avg cost: ${subset['cost_usd'].mean():.4f}")
         print(f"  Avg subagents: {subset['num_subagents'].mean():.1f}")
-    
+
     # Save dataset
     save_dataset(dataset, f"data/{path}.csv")
     print(f"\nDataset saved to data/{path}.csv")
-    
+
     # Also print basic stats
     print("\n" + "=" * 80)
     print("Dataset Info:")

@@ -28,3 +28,8 @@ Should work as well, generating visuals. It will also work with my example dataf
 
 
 Note that this is all an early version, I intend to update the process soon and make it more robust.
+
+
+## Notes/TODO
+- `research_lead_agent.md` has 3 instances of the magic number `20`, one on line 84 and two on line 86, that I manually changed to `10` for the final round of browsecomp_plus runs. This has no impact on the paper as-is, but I would encourage making these changes if running evals on bowsecomp or browsecomp-plus.
+- similarly, `researcher_agent_script.py` has `max_turns = 50` at line 83 for the agent workflow, but I set this to 25 for bc and bcp. This has no impact on the paper as is

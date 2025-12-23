@@ -3,22 +3,23 @@ mode: eval
 evalset: browsecomp-plus
 
 # Index into the BrowseComp dataset (preserves existing logic)
-num_questions: 2
-offset: 0
+num_questions: 5
+offset: 35
 print_question: true
 debug_verbose: true
-tools: ["WebSearch", "WebFetch", "Read", "Bash", "Task"]
-filecode: bcp-eval-ma-opus
+# tools: ["WebSearch", "WebFetch", "Read", "Bash", "Task"]
+tools: ["WebSearch", "WebFetch", "Read", "Bash"]
+filecode: bcp-eval-sg-haiku
 
 
 # Path to prompt files
-# system_prompt_filepath: "prompts/single_research_agent.md"
-# research_subagent_prompt_filepath: null # No subagent prompt for single agent mode (IMPORTANT)
+system_prompt_filepath: "prompts/single_research_agent.md"
+research_subagent_prompt_filepath: null # No subagent prompt for single agent mode (IMPORTANT)
 
 
-system_prompt_filepath: "prompts/research_lead_agent.md"
-research_subagent_prompt_filepath: "prompts/research_subagent.md"
+# system_prompt_filepath: "prompts/research_lead_agent.md"
+# research_subagent_prompt_filepath: "prompts/research_subagent.md"
 
 # Optional overrides (safe defaults are used if omitted)
-model : "claude-opus-4-5-20251101"
+model : "claude-haiku-4-5"
 
