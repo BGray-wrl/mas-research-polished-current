@@ -614,7 +614,7 @@ def run_all_multiagent_experiments(csv_path: str, output_dir: str = 'experiments
 
 if __name__ == "__main__":
     # Run all multi-agent experiments
-    csv_path = "data/ww100.csv"
+    csv_path = "data/ww100.csv" ## CHANGE ME to your desired dataset path
     output_dir = "experiments/visuals"
     
     results = run_all_multiagent_experiments(csv_path, output_dir)
