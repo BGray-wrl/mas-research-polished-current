@@ -2,33 +2,37 @@ mas-research-polished-current
 
 This is a working pipeline, but not a very polished one.
 
-Install the required packages (requirements.txt).
+Init and install the required packages:
 
-To run the MAS, first create a .env file with ANTHROPIC_API_KEY and OPENAI_API_KEY.
+`uv venv`
+`source .venv/bin/activate`
+`uv pip install -r requirements.txt`
 
-Next, run the main runner from root with one of the provided configs. Example:
+Create a .env file with ANTHROPIC_API_KEY="YOUR_KEY" and OPENAI_API_KEY="YOUR_KEY".
+
+Run the main runner from root with one of the provided configs. Example:
     `uv run src/main_runner.py --config configs/dummy.yaml`
 
-I strongly encourage caution and reading the other configs before doing anything else. You will need a decrypted browse_comp_test.csv file in data/ to run other configs as well.
+I strongly encourage caution and reading the other configs before doing anything else. You may need a decrypted browse_comp_test.csv file in data/ to run other configs. This 
 
-You can print metrics by changing the manual 'filepath' var in print_metrics.py to fit with the dummy output, the running
+You can print metrics by changing the manual 'filepath' var (default dummy data) in print_metrics.py the running
     `uv run src/print_metrics.py`          
-and may change `test_local_filepath = "results/dummy-singleagent/current.json"` to whatever your testing output file is.          
+In real runs, change `test_local_filepath = "results/dummy-singleagent/current.json"` in `print_metrics.py` to whatever your output filepath is.          
 
-Finally you can assemble metrics into a datafile by replacing 'analysis_metrics_filepaths.json' files with only valid paths and running
+Finally you can assemble metrics into a datafile by replacing 'analysis_metrics_filepaths.json' files with only valid path (default dummy data) and running
     `uv run src/assemble_run_metrics.py --results configs/analysis_metrics_filepaths.json --output FILENAME`
 Metrics summary written to FILENAME
 
-Manually change the paths in multirun_analysis.py (after name == __main__) then run
+Manually change the paths in multirun_analysis.py (after name == __main__, default dummy data) then run
     `uv run src/mas_research/multirun_analysis.py`
 To make the dataset *.csv file (and update is definitely todo, this is a wip)
 
-And if that all works, manually changing the dataset path and
-    `uv run experiments/experiments_and_visuals.py` 
+And if that all works, manually changing the dataset path (default ww100.csv) and
+    `uv run experiments/experiments_and_visuals_multiagent.py` 
 Should work as well, generating visuals. It will also work with my example datafile data/dataset.csv
+This will not work with the dummy dataset FILENAME.csv, so I've defaulted to the actual data of 100 paired (single-agent & multi-agent) runs of this system on webwalker-qa.
 
-
-Note that this is all an early version, I intend to update the process soon and make it more robust.
+Apologies for all the manual filepath changes.
 
 
 ## Notes/TODO
