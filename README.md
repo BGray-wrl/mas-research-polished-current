@@ -12,13 +12,14 @@ Next, run the main runner from root with one of the provided configs. Example:
 I strongly encourage caution and reading the other configs before doing anything else. You will need a decrypted browse_comp_test.csv file in data/ to run other configs as well.
 
 You can print metrics by changing the manual 'filepath' var in print_metrics.py to fit with the dummy output, the running
-    `uv run src/print_metrics.py`                       
+    `uv run src/print_metrics.py`          
+and may change `test_local_filepath = "results/dummy-singleagent/current.json"` to whatever your testing output file is.          
 
 Finally you can assemble metrics into a datafile by replacing 'analysis_metrics_filepaths.json' files with only valid paths and running
     `uv run src/assemble_run_metrics.py --results configs/analysis_metrics_filepaths.json --output FILENAME`
 Metrics summary written to FILENAME
 
-Manually change the path multirun_analysis.py then run
+Manually change the paths in multirun_analysis.py (after name == __main__) then run
     `uv run src/mas_research/multirun_analysis.py`
 To make the dataset *.csv file (and update is definitely todo, this is a wip)
 
