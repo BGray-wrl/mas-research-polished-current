@@ -598,11 +598,11 @@ def run_all_multiagent_experiments(csv_path: str, output_dir: str = 'experiments
     # Run experiments
     results = {}
     
-    # results['experiment_1'] = experiment_1_coordination_success_analysis(df)
-    # results['experiment_2'] = experiment_2_resource_efficiency_analysis(df)
-    # results['experiment_3'] = experiment_3_coordination_patterns_correlation(df, output_dir)
+    results['experiment_1'] = experiment_1_coordination_success_analysis(df)
+    results['experiment_2'] = experiment_2_resource_efficiency_analysis(df)
+    results['experiment_3'] = experiment_3_coordination_patterns_correlation(df, output_dir)
     results['experiment_4'] = experiment_4_operational_clustering(df, output_dir)
-    # results['experiment_5'] = experiment_5_subagent_coordination_dynamics(df, output_dir)
+    results['experiment_5'] = experiment_5_subagent_coordination_dynamics(df, output_dir)
     
     print("\n" + "="*80)
     print("ALL MULTI-AGENT EXPERIMENTS COMPLETE")
