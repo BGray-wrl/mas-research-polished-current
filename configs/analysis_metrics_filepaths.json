@@ -1,15 +1,5 @@
 {
-    "eval-multiagent": [
-        "results/eval-multiagent/Nov-09-06-54/result10.json",
-        "results/eval-multiagent/Nov-09-06-54/result11.json",
-        "results/eval-multiagent/Nov-09-06-54/result12.json",
-        "results/eval-multiagent/Nov-09-06-54/result13.json"
-    ],
     "eval-singleagent": [
-        "results/eval-singleagent/Nov-09-06-24/result10.json",
-        "results/eval-singleagent/Nov-09-06-24/result11.json",
-        "results/eval-singleagent/Nov-09-06-24/result12.json",
-        "results/eval-singleagent/Nov-09-06-24/result13.json",
-        "results/eval-singleagent/Nov-09-06-24/result14.json"
+        "results/dummy-singleagent/current.json"
     ]
 }
