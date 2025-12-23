@@ -3,3 +3,4 @@ pandas
 claude_agent_sdk
 pyyaml
 openai
+datasets
