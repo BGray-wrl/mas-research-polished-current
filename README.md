@@ -24,7 +24,7 @@ Finally you can assemble metrics into a datafile by replacing 'analysis_metrics_
 Metrics summary written to FILENAME
 
 Manually change the paths in multirun_analysis.py (after name == __main__, default dummy data) then run
-    `uv run src/mas_research/multirun_analysis.py`
+    `uv run src/multirun_analysis.py`
 To make the dataset *.csv file (and update is definitely todo, this is a wip)
 
 And if that all works, manually changing the dataset path (default ww100.csv) and
