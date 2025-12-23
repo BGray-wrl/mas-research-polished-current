@@ -1,6 +1,14 @@
 mas-research-polished-current
 
-This is a working pipeline, but not a very polished one.
+## What is this?
+
+This repo contains the code for evaluating single-agent vs. multi-agent architectures on web-based QA tasks. The main 'result' from the initial runs, informally, was that the multi-agent system sometimes just burned tokens and thrashed; it did not outperform the single-agent run. I tested both architectures on WebWalker QA using Claude Haiku 4.5, ran 200 evaluations (100 per architecture), and found the single-agent baseline matched accuracy while being way more cost-effective.
+
+The paper is at `working_preprint.pdf`. This repo has the evaluation pipeline, metrics extraction, and all the analysis code that generated the figures and stats.
+
+## Getting Started
+
+This is a working pipeline, albeit not a very polished one.
 
 Init and install the required packages:
 
