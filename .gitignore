@@ -6,6 +6,7 @@ __pycache__/
 .venv/
 results/*
 .DS_Store
+*.DS_Store
 */.DS_Store
 
 data/browse_comp_test.csv
@@ -16,6 +17,7 @@ misc-testing-archive/*
 
 paper/
 paper/*
+writing_outputs/*
 
 data/archive/*
 
@@ -26,3 +28,5 @@ prompts/test_memory.md
 results/*
 
 CLAUDE.md
+.claude
+.claude/*
