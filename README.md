@@ -12,8 +12,10 @@ Create a .env file with ANTHROPIC_API_KEY="YOUR_KEY" and OPENAI_API_KEY="YOUR_KE
 
 Run the main runner from root with one of the provided configs. Example:
     `uv run src/main_runner.py --config configs/dummy.yaml`
+or
+    `uv run src/main_runner.py --config configs/multiagent-run-ww-DEMO` which costs me ~$0.7 in anthropic credits
 
-I strongly encourage caution and reading the other configs before doing anything else. You may need a decrypted browse_comp_test.csv file in data/ to run other configs. This 
+I recommend caution and reading the other configs before changing anything.
 
 You can print metrics by changing the manual 'filepath' var (default dummy data) in print_metrics.py the running
     `uv run src/print_metrics.py`          

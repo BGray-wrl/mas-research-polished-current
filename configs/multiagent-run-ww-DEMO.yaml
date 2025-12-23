@@ -1,0 +1,19 @@
+# Minimal config to run the lead researcher with the default settings
+mode: eval
+evalset: webwalker
+
+# Index into the Webwalker dataset
+num_questions: 2
+offset: 10
+print_question: true
+debug_verbose: true
+tools: ["WebSearch", "WebFetch", "Read", "Task", "Bash"]
+filecode: ww-eval-multiagent-DEMO  ## evalset-evaltype-agentsetup ## ||  ww/bc/gaia - eval/dummy/test - singleagent/multiagent
+
+
+# Path to prompt files
+system_prompt_filepath: "prompts/research_lead_agent.md"
+research_subagent_prompt_filepath: "prompts/research_subagent.md"
+
+# Optional overrides (safe defaults are used if omitted)
+model : "claude-haiku-4-5-20251001"

@@ -1,4 +1,6 @@
 {
+    "eval-multiagent": [
+    ],
     "eval-singleagent": [
         "results/dummy-singleagent/current.json"
     ]
