@@ -512,8 +512,9 @@ def print_evaluation_stats():
 
 
 if __name__ == "__main__":
-    # Example usage
-    path = "ww100"
+
+    # path = "ww100" ## WARNING this is a large dataset and will take a long time to convert into ww100.csv, including many API calls for classification.
+    path = "FILENAME" ## CHANGE ME to your desired dataset path without .json
     results_path = f"data/{path}.json"
     dataset = load_and_create_dataset(results_path)
 
